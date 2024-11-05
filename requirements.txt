@@ -1,0 +1,6 @@
+streamlit
+pendulum
+pandas
+streamlit-shadcn-ui
+seaborn
+matplotlib
