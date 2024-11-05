@@ -134,7 +134,7 @@ tab_selector = ui.tabs(
 if tab_selector == "Online Pre-assessment":
     st.image("online.png")
     st.write("Send **Tally Form** Pre-asessment")
-    st.dataframe(df)
+
 
 elif tab_selector == "HCA Self-book":
     st.image("hca.png")
