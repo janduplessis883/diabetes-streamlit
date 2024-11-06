@@ -407,6 +407,7 @@ elif tab_selector == "HCA Self-book":
             axes[i].yaxis.grid(True, linewidth=0.5)
             axes[i].grid(axis='x', visible=False)  # Optional: hides vertical grid lines if not desired
 
+
         # Display the plot in Streamlit
         st.pyplot(fig)
     else:
