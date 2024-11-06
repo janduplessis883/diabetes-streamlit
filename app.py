@@ -28,13 +28,50 @@ col_list = ['DOB', 'First DM Diagnosis', 'Annual Review Done', 'HbA1c', 'BP', 'C
 
 def datetime_conversion(df, col_list):
     for col in col_list:
-        # Remove invalid dates
-        df[col] = df[col].str.replace("00/01/1900", "").replace("01/01/1900", "")
+        # Check if the column exists in the dataframe to avoid KeyError
+        if col in df.columns:
+            # Ensure that the column is of string type to avoid issues
+            df[col] = df[col].astype(str)
 
-        # Convert to datetime format with specific date format and strip time
-        df[col] = pd.to_datetime(df[col], format='%d/%m/%Y', errors='coerce').dt.date
+            # Replace invalid dates
+            df[col] = df[col].replace(["00/01/1900", "01/01/1900"], "")
+
+            # Convert to datetime format with specific date format and strip time
+            df[col] = pd.to_datetime(df[col], format='%d/%m/%Y', errors='coerce').dt.date
     return df
 
+def calculate_age(dob):
+    # Parse DOB if it's provided as a string
+    if isinstance(dob, str):
+        dob = datetime.strptime(dob, '%Y-%m-%d').date()
+
+    # Get today's date
+    today = datetime.today().date()
+
+    # Calculate age
+    age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+    return age
+
+def length_of_diagnosis_in_months(date_of_diagnosis):
+    # Parse date_of_diagnosis if it's provided as a string
+    if isinstance(date_of_diagnosis, str):
+        date_of_diagnosis = datetime.strptime(date_of_diagnosis, '%Y-%m-%d').date()
+
+    # Get today's date
+    today = datetime.today().date()
+
+    # Calculate difference in years and months
+    years_difference = today.year - date_of_diagnosis.year
+    months_difference = today.month - date_of_diagnosis.month
+
+    # Total months difference
+    total_months = years_difference * 12 + months_difference
+
+    # Adjust if the current day of the month is before the diagnosis day
+    if today.day < date_of_diagnosis.day:
+        total_months -= 1
+
+    return total_months
 
 def calculate_hba1c_due(data, hba1c_value_col, hba1c_date_col, due_col='hba1c_due'):
     """
@@ -290,6 +327,8 @@ def load_dashboard(file):
     df['egfr_due'] = df['egfr_due'].astype(bool)
     df = calculate_urine_acr_due(df, acr_date_col='Urine ACR', due_col='urine_acr_due')
     df['urine_acr_due'] = df['urine_acr_due'].astype(bool)
+    df['age'] = df['DOB'].apply(calculate_age)
+    df['length_of_diagnosis_months'] = df['First DM Diagnosis'].apply(length_of_diagnosis_in_months)
     return df
 
 if dashboard_file is not None:
@@ -359,7 +398,7 @@ tab_selector = ui.tabs(
         "Filter Dataframe",
         "Guidelines"
     ],
-            default_value="Online Pre-assessment",
+            default_value="Quick Start",
             key="tab3",
         )
 
@@ -377,39 +416,64 @@ elif tab_selector == "HCA Self-book":
     selected_tests = st.multiselect(
         "Select tests to include:",
         options=["HbA1c", "Lipids", "eGFR", "Urine ACR", "Foot"],
-        default=[]
+        default=["HbA1c"]
     )
     # Call the filter_due_patients function with the DataFrame and selected tests
     due_patients = filter_due_patients(df, selected_tests)
     sns.histplot(data=due_patients, x='HbA1c value')
     # Display the filtered DataFrame if there are results
+
     if not due_patients.empty:
-        st.dataframe(due_patients)
+        st.dataframe(due_patients[['Patient ID', 'NHS number', 'First Name', 'Surname', 'DOB', 'Usual GP',
+       'E-Mail Address', 'E-Mail Address Recorded', 'IMD Decile', 'Ethnicity',
+       'BAME', 'First DM Diagnosis', 'Diabetes diagnosis', 'HbA1c value',
+       'SBP', 'DBP', 'Total Chol', 'Non-HDL Chol', 'Latest HDL', 'Latest LDL',
+       'Latest eGFR', 'Latest BMI', 'hba1c_due', 'lipids_due',
+       'foot_due', 'egfr_due', 'urine_acr_due', 'age',
+       'length_of_diagnosis_months', 'Latest Qrisk2', 'Annual Review Done',
+       'HbA1c', 'BP', 'Cholesterol', 'BMI', 'eGFR', 'Urine ACR', 'Smoking',
+       'Foot Risk', 'Retinal screening', '9 KCP Complete',
+       '3 Levels to Target', 'MH Screen - DDS or PHQ', 'Patient goals',
+       'Care plan', 'Education', 'Care planning consultation',
+       'Struc educ in L5Y', 'Struc educ in 12M Diag', 'Risk Factor',
+       'Eligible for REWIND', 'REWIND - Started', 'Hypo monitoring',
+       'Statin date', 'Statin', 'Metformin', 'Sulphonylurea', 'DPP4', 'SGLT2',
+       'Pioglitazone', 'GLP-1', 'Basal / mix insulin', 'Rapid acting insulin',
+       'ACEI/ARB', 'Calcium Channel Blocker', 'Diuretic', 'Beta Blocker',
+       'Spironolactone', 'Doxazosin', 'Review Due',]])
+
 
         # Create a single row with 5 subplots
         # Create a single row with 5 subplots
-        fig, axes = plt.subplots(1, 5, figsize=(20, 3), sharey=True)
 
-        # Column names to plot
-        columns = ['HbA1c value', 'Total Chol', 'Latest eGFR', 'DBP', 'SBP']
+        fig, axes = plt.subplots(2, 5, figsize=(20, 6), sharey=True)
+
+        # Column names to plot (make sure you have up to 10 columns to fill each subplot)
+        columns = ['age', 'length_of_diagnosis_months','HbA1c value',  'DBP', 'SBP', 'Latest eGFR',
+                                'Total Chol', 'Latest LDL', 'Latest HDL', 'Non-HDL Chol']
 
         # Loop over each column and create a histogram
         for i, col in enumerate(columns):
-            sns.histplot(data=due_patients, x=col, ax=axes[i], color='#e3964a', kde=True, bins=10)
-            axes[i].set_title(col)
+            row, col_index = divmod(i, 5)  # Determine row and column index in 2x5 grid
+            sns.histplot(data=due_patients, x=col, ax=axes[row, col_index], color='#f09235', bins=15)
+            #axes[row, col_index]
 
             # Remove top and right borders
-            axes[i].spines['top'].set_visible(False)
-            axes[i].spines['right'].set_visible(False)
-            axes[i].spines['left'].set_visible(False)
+            axes[row, col_index].spines['top'].set_visible(False)
+            axes[row, col_index].spines['right'].set_visible(False)
+            axes[row, col_index].spines['left'].set_visible(False)
 
-                # Add horizontal grid lines with specific thickness
-            axes[i].yaxis.grid(True, linewidth=0.5)
-            axes[i].grid(axis='x', visible=False)  # Optional: hides vertical grid lines if not desired
+            # Add horizontal grid lines with specific thickness
+            axes[row, col_index].yaxis.grid(True, linewidth=0.5)
+            axes[row, col_index].grid(axis='x', visible=False)  # Optional: hides vertical grid lines if not desired
 
+        # Hide any unused subplots if columns are less than 10
+        for j in range(len(columns), 10):
+            fig.delaxes(axes.flatten()[j])
 
         # Display the plot in Streamlit
         st.pyplot(fig)
+
     else:
         st.warning('Please upload the necessary CSV file to display the dataframe. Select as least one criteria to filter by.')
 
@@ -528,4 +592,41 @@ elif tab_selector == "Guidelines":
 
 elif tab_selector == "Quick Start":
     st.image("start.png")
-    st.image("quick.png", width=700)
+    st.write("""### Step 1: Upload Data Files
+
+**Access the Sidebar**: On the left side of the app, you'll find the sidebar containing file upload options.
+
+**Upload CSV Files**:
+
+**Patient SMS List CSV**: Click on "Upload Patient SMS List CSV" and select your patient SMS list file.
+
+**Diabetes Dashboard CSV**: Click on "Upload Diabetes Dashboard CSV" and select your diabetes dashboard data file.
+
+Ensure Correct Formatting: Make sure your CSV files are properly formatted and include all necessary columns as expected by the app.
+
+### Step 2: Navigate Through the App Tabs
+
+The app is organized into several tabs, each designed to assist with different aspects of patient management:
+
+**Quick Start**: Provides an overview and initial guidance on using the app.
+Online Pre-assessment:
+Purpose: Send Tally Form pre-assessments to patients.
+Action Required: Ensure both the Patient SMS List CSV and Diabetes Dashboard CSV files are uploaded to utilize this feature.
+HCA Self-book:
+Identify Due Patients: Use this tab to filter and identify patients who are due for specific tests.
+Select Tests: Choose from HbA1c, Lipids, eGFR, Urine ACR, and Foot examinations using the multi-select option.
+View Results: The app displays a list of patients due for the selected tests along with interactive histograms of key metrics.
+Download SMS List: Extract a CSV file of patients to facilitate SMS outreach for appointment bookings.
+Rewind:
+Focus on REWIND Program: This tab highlights patients eligible for the REWIND program who have not yet started it.
+View and Download: Access the list of eligible patients and download their contact information for outreach.
+Patient Search:
+Individual Lookup: Search for individual patients using specific criteria.
+Note: This feature requires the Diabetes Dashboard CSV to be uploaded.
+Filter Dataframe:
+Advanced Filtering: Use sidebar sliders to filter patients based on various metrics such as HbA1c value, SBP, DBP, LDL, eGFR, and BMI.
+Analyze Data: View the filtered patient list and analyze the data to make informed clinical decisions.
+Guidelines:
+Reference Material: Access summarized NICE guidelines for diabetes management directly within the app.
+Stay Informed: Use this information to ensure your practice aligns with the recommended monitoring frequencies and target values.
+""")
