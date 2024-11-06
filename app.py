@@ -3,10 +3,14 @@ import pandas as pd
 import streamlit_shadcn_ui as ui
 import pendulum
 from datetime import datetime, date
+import seaborn as sns
+import matplotlib.pyplot as plt
+
 
 st.set_page_config(layout="wide")
 st.image('dashboard.png')
 
+st.logo("data_upload.png", size='large')
 
 
 # File upload fields for CSVs
@@ -81,6 +85,182 @@ def calculate_hba1c_due(data, hba1c_value_col, hba1c_date_col, due_col='hba1c_du
 
     return data
 
+
+def calculate_lipids_due(data, cholesterol_date_col, due_col='lipids_due'):
+    """
+    Determine if a lipid test is due based on the last cholesterol test date.
+
+    Parameters:
+    data (pd.DataFrame): The DataFrame containing the date of the last cholesterol test.
+    cholesterol_date_col (str): The column name in the DataFrame containing the cholesterol test dates.
+    due_col (str): The name of the new column where the due status will be stored.
+
+    Returns:
+    pd.DataFrame: The DataFrame with the new due status column.
+    """
+    # Current date
+    now = pendulum.now()
+
+    # Define the function to determine if lipid test is due
+    def is_lipids_due(row):
+        last_cholesterol_date = row[cholesterol_date_col]
+
+        # Check if the date is missing
+        if pd.isnull(last_cholesterol_date):
+            return False  # No date means we can't determine if it's due
+
+        # Convert last cholesterol test date to pendulum instance if it’s not already
+        if isinstance(last_cholesterol_date, (pd.Timestamp, datetime, pendulum.DateTime)):
+            last_cholesterol_date = pendulum.instance(last_cholesterol_date)
+        elif isinstance(last_cholesterol_date, str):
+            last_cholesterol_date = pendulum.parse(last_cholesterol_date)
+        elif isinstance(last_cholesterol_date, date):  # Check for `datetime.date` specifically
+            last_cholesterol_date = pendulum.instance(pd.Timestamp(last_cholesterol_date))
+
+        # Check if the difference is greater than or equal to 1 year
+        return (now - last_cholesterol_date).in_years() >= 1
+
+    # Apply the function to each row in the DataFrame
+    data[due_col] = data.apply(is_lipids_due, axis=1)
+
+    return data
+
+def calculate_foot_due(data, foot_date_col, due_col='foot_due'):
+    """
+    Determine if a foot check is due based on the last foot check date.
+
+    Parameters:
+    data (pd.DataFrame): The DataFrame containing the date of the last foot check.
+    foot_date_col (str): The column name in the DataFrame containing the foot check dates.
+    due_col (str): The name of the new column where the due status will be stored.
+
+    Returns:
+    pd.DataFrame: The DataFrame with the new due status column.
+    """
+    # Current date
+    now = pendulum.now()
+
+    # Define the function to determine if foot check is due
+    def is_foot_due(row):
+        last_foot_check_date = row[foot_date_col]
+
+        # Check if the date is missing
+        if pd.isnull(last_foot_check_date):
+            return False  # No date means we can't determine if it's due
+
+        # Convert last foot check date to pendulum instance if it’s not already
+        if isinstance(last_foot_check_date, (pd.Timestamp, datetime, pendulum.DateTime)):
+            last_foot_check_date = pendulum.instance(last_foot_check_date)
+        elif isinstance(last_foot_check_date, str):
+            last_foot_check_date = pendulum.parse(last_foot_check_date)
+        elif isinstance(last_foot_check_date, date):  # Check for `datetime.date` specifically
+            last_foot_check_date = pendulum.instance(pd.Timestamp(last_foot_check_date))
+
+        # Check if the difference is greater than or equal to 1 year
+        return (now - last_foot_check_date).in_years() >= 1
+
+    # Apply the function to each row in the DataFrame
+    data[due_col] = data.apply(is_foot_due, axis=1)
+
+    return data
+
+
+def calculate_egfr_due(data, egfr_value_col, egfr_date_col, due_col='egfr_due'):
+    """
+    Determine if an eGFR test is due based on the last eGFR value and test date.
+
+    Parameters:
+    data (pd.DataFrame): The DataFrame containing eGFR values and dates.
+    egfr_value_col (str): The column name in the DataFrame containing eGFR values.
+    egfr_date_col (str): The column name in the DataFrame containing the date of the last eGFR test.
+    due_col (str): The name of the new column where the due status will be stored.
+
+    Returns:
+    pd.DataFrame: The DataFrame with the new due status column.
+    """
+    # Current date
+    now = pendulum.now()
+
+    # Define the function to determine if eGFR test is due based on value and date
+    def is_egfr_due(row):
+        egfr_value = row[egfr_value_col]
+        last_egfr_date = row[egfr_date_col]
+
+        # Check if the date or value is missing
+        if pd.isnull(last_egfr_date) or pd.isnull(egfr_value):
+            return False  # If there's no date or value, we cannot determine due status
+
+        # Determine the timeframe based on eGFR value
+        if egfr_value <= 30:
+            timeframe = 0.5  # 6 months if eGFR <= 30
+        else:
+            timeframe = 1  # 1 year if eGFR > 30
+
+        # Convert last eGFR date to pendulum instance
+        if isinstance(last_egfr_date, (pd.Timestamp, datetime)):
+            last_egfr_date = last_egfr_date.to_pydatetime()
+
+        if isinstance(last_egfr_date, (pd.Timestamp, date)):
+            last_egfr_date = last_egfr_date.isoformat()
+
+        last_egfr_date = pendulum.parse(last_egfr_date)
+
+        # Check if the difference in years is greater than or equal to the timeframe
+        return (now - last_egfr_date).in_years() >= timeframe
+
+    # Apply the function to each row in the DataFrame
+    data[due_col] = data.apply(is_egfr_due, axis=1)
+
+    return data
+
+def calculate_urine_acr_due(data, acr_date_col, due_col='urine_acr_due'):
+    """
+    Determine if a urine ACR test is due based on the last test date.
+
+    Parameters:
+    data (pd.DataFrame): The DataFrame containing the date of the last urine ACR test.
+    acr_date_col (str): The column name in the DataFrame containing the urine ACR test dates.
+    due_col (str): The name of the new column where the due status will be stored.
+
+    Returns:
+    pd.DataFrame: The DataFrame with the new due status column.
+    """
+    # Current date as a pendulum DateTime object
+    now = pendulum.now()
+
+    # Define the function to determine if urine ACR is due
+    def is_urine_acr_due(row):
+        last_acr_date = row[acr_date_col]
+
+        # Check if the date is missing
+        if pd.isnull(last_acr_date):
+            return False  # No date means we can't determine if it's due
+
+        # Ensure last_acr_date is a pendulum DateTime instance
+        if isinstance(last_acr_date, pd.Timestamp):
+            last_acr_date = pendulum.instance(last_acr_date.to_pydatetime())
+        elif isinstance(last_acr_date, date):  # for datetime.date
+            last_acr_date = pendulum.instance(pd.Timestamp(last_acr_date))
+        elif isinstance(last_acr_date, str):
+            last_acr_date = pendulum.parse(last_acr_date)
+
+        # Check if the last ACR test was more than 1 year ago
+        return (now - last_acr_date).in_years() >= 1
+
+    # Apply the is_urine_acr_due function to each row in the DataFrame
+    data[due_col] = data.apply(is_urine_acr_due, axis=1)
+
+    # Return the modified DataFrame
+    return data
+
+# Function to highlight a list of columns
+def highlight_columns(columns, color='#fdf7f2'):
+    def style_columns(val):
+        return f'background-color: {color}'
+    return df.style.applymap(style_columns, subset=columns)
+
+
+
 def load_dashboard(file):
     # Load and preprocess the dashboard DataFrame
     df = pd.read_csv(file)
@@ -101,6 +281,15 @@ def load_dashboard(file):
     df['NHS number'] = df['NHS number'].str.replace(" ", "").astype(int)
     df = datetime_conversion(df, col_list)
     df = calculate_hba1c_due(df, hba1c_value_col='HbA1c value', hba1c_date_col='HbA1c', due_col='hba1c_due')
+    df['hba1c_due'] = df['hba1c_due'].astype(bool)
+    df = calculate_lipids_due(df, "Cholesterol", "lipids_due")
+    df['lipids_due'] = df['lipids_due'].astype(bool)
+    df = calculate_foot_due(df, foot_date_col='Foot Risk', due_col='foot_due')
+    df['foot_due'] = df['foot_due'].astype(bool)
+    df = calculate_egfr_due(df, egfr_value_col='Latest eGFR', egfr_date_col='eGFR', due_col='egfr_due')
+    df['egfr_due'] = df['egfr_due'].astype(bool)
+    df = calculate_urine_acr_due(df, acr_date_col='Urine ACR', due_col='urine_acr_due')
+    df['urine_acr_due'] = df['urine_acr_due'].astype(bool)
     return df
 
 if dashboard_file is not None:
@@ -114,19 +303,62 @@ def extract_sms_df(intervention_df, sms_df):
     return output_sms_df
 
 
+def filter_due_patients(data, selected_tests):
+    """
+    Filter patients due for specific tests based on selected tests.
 
+    Parameters:
+    data (pd.DataFrame): The DataFrame containing the due status columns for various tests.
+    selected_tests (list): The list of tests selected in the multi-select field.
+
+    Returns:
+    pd.DataFrame: A DataFrame filtered to include only patients due for the selected tests.
+    """
+    # Mapping of test names to DataFrame columns
+    test_columns = {
+        "HbA1c": "hba1c_due",
+        "Lipids": "lipids_due",
+        "eGFR": "egfr_due",
+        "Urine ACR": "urine_acr_due",
+        "Foot": "foot_due"
+    }
+
+    # Ensure all columns are boolean
+    for col in test_columns.values():
+        if col in data.columns:
+            data[col] = data[col].astype(bool)
+
+    # Create filter conditions based on selected tests
+    filter_conditions = [data[test_columns[test]] for test in selected_tests if test in test_columns]
+
+    # If no valid tests are selected, return an empty DataFrame
+    if not filter_conditions:
+        return data.iloc[0:0]
+
+    # Combine all conditions with logical OR
+    combined_filter = filter_conditions[0]
+    for condition in filter_conditions[1:]:
+        combined_filter |= condition
+
+    # Debugging print statements
+    st.write("Selected Tests:", selected_tests)
+    st.write("Filter Conditions Applied:", combined_filter.sum(), "rows match the filter.")
+
+    # Return the filtered data
+    return data[combined_filter]
 
 
 
 tab_selector = ui.tabs(
-            options=[
-                "Online Pre-assessment",
-                "HCA Self-book",
-                "Rewind",
-                "Filter Dataframe",
-                "Patient Search",
-                "Guidelines"
-            ],
+    options=[
+        "Quick Start",
+        "Online Pre-assessment",
+        "HCA Self-book",
+        "Rewind",
+        "Patient Search",
+        "Filter Dataframe",
+        "Guidelines"
+    ],
             default_value="Online Pre-assessment",
             key="tab3",
         )
@@ -134,21 +366,56 @@ tab_selector = ui.tabs(
 if tab_selector == "Online Pre-assessment":
     st.image("online.png")
     st.write("Send **Tally Form** Pre-asessment")
+    if 'sms_df' not in globals() or 'df' not in globals():
+        st.warning('Please upload both CSV files to proceed.')
 
 
 elif tab_selector == "HCA Self-book":
     st.image("hca.png")
+    if 'sms_df' not in globals() or 'df' not in globals():
+        st.warning('Please upload both CSV files to proceed.')
     selected_tests = st.multiselect(
         "Select tests to include:",
-        options=["HBa1c", "Lipids", "eGFR", "Urine ACR", "Foot"],
+        options=["HbA1c", "Lipids", "eGFR", "Urine ACR", "Foot"],
         default=[]
     )
-    if selected_tests == ['HBa1c']:
-        hba1c_due = df[(df['hba1c_due'] == True)]
-        st.dataframe(hba1c_due)
+    # Call the filter_due_patients function with the DataFrame and selected tests
+    due_patients = filter_due_patients(df, selected_tests)
+    sns.histplot(data=due_patients, x='HbA1c value')
+    # Display the filtered DataFrame if there are results
+    if not due_patients.empty:
+        st.dataframe(due_patients)
+
+        # Create a single row with 5 subplots
+        # Create a single row with 5 subplots
+        fig, axes = plt.subplots(1, 5, figsize=(20, 3), sharey=True)
+
+        # Column names to plot
+        columns = ['HbA1c value', 'Total Chol', 'Latest eGFR', 'DBP', 'SBP']
+
+        # Loop over each column and create a histogram
+        for i, col in enumerate(columns):
+            sns.histplot(data=due_patients, x=col, ax=axes[i], color='#e3964a', kde=True, bins=10)
+            axes[i].set_title(col)
+
+            # Remove top and right borders
+            axes[i].spines['top'].set_visible(False)
+            axes[i].spines['right'].set_visible(False)
+            axes[i].spines['left'].set_visible(False)
+
+                # Add horizontal grid lines with specific thickness
+            axes[i].yaxis.grid(True, linewidth=0.5)
+            axes[i].grid(axis='x', visible=False)  # Optional: hides vertical grid lines if not desired
+
+        # Display the plot in Streamlit
+        st.pyplot(fig)
+    else:
+        st.warning('Please upload the necessary CSV file to display the dataframe. Select as least one criteria to filter by.')
 
 elif tab_selector == "Filter Dataframe":
     st.image("filter.png")
+    if 'df' not in globals():
+        st.warning('Please upload the Diabetes Dashboard CSV file to proceed.')
         # Get the min and max values for each column to use in sliders
     metrics = {
         "HbA1c value": ("HbA1c value", df["HbA1c value"].min(), df["HbA1c value"].max()),
@@ -187,6 +454,8 @@ elif tab_selector == "Filter Dataframe":
 
 elif tab_selector == "Rewind":
     st.image("rewind.png")
+    if 'sms_df' not in globals() or 'df' not in globals():
+        st.warning('Please upload both CSV files to proceed.')
     rewind_df = df[(df['Eligible for REWIND'] == 'Yes') & (df['REWIND - Started'] == 0)]
     st.markdown("Patient count: " + str(rewind_df.shape[0]))
     st.dataframe(rewind_df)
@@ -198,6 +467,7 @@ elif tab_selector == "Rewind":
         file_name='dm_rewind_sms.csv',
         mime='text/csv'
     )
+
 
 
 elif tab_selector == "Patient Search":
@@ -249,3 +519,12 @@ elif tab_selector == "Guidelines":
 	-	If on weight loss medications or interventions: Check every 3 months.""")
 
     st.image('table.png')
+
+
+
+
+
+
+elif tab_selector == "Quick Start":
+    st.image("start.png")
+    st.image("quick.png", width=700)
