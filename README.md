@@ -1,5 +1,5 @@
 # Diabetes Dashboard for Primary Care
-![intro-gif](github.gif)
+![intro-gif](github.png)
 
 A streamlined **Diabetes Dashboard** for managing diabetes recalls in primary care settings, designed to optimize patient follow-up and streamline assessment, testing, and recall workflows. This tool helps healthcare providers identify, segment, and manage cohorts of diabetic patients for recalls, including online pre-assessments, blood tests, foot checks, and clinician reviews.
 
