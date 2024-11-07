@@ -4,3 +4,4 @@ pandas
 streamlit-shadcn-ui
 seaborn
 matplotlib
+streamlit-pdf-viewer

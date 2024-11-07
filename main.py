@@ -292,13 +292,23 @@ def load_and_preprocess_dashboard(file_path, col_list, test_info):
     # Load the CSV file
     df = pd.read_csv(file_path)
 
-    # Drop specified columns
-    df.drop(columns=columns_to_drop, inplace=True)
+# Check if columns are in DataFrame, and drop only those present
+    df = df.drop(columns=[col for col in columns_to_drop if col in df.columns])
     df.rename(columns= {'NHS Number': 'NHS number'}, inplace=True)
-    df['NHS number'] = df['NHS number'].str.replace(" ", "").astype(int)
+        # Handle NHS number - clean and convert
+    df['NHS number'] = (
+        df['NHS number']
+        .astype(str)
+        .str.replace(r"\.0$", "", regex=True)  # Remove trailing .0 if present
+        .str.replace(" ", "")  # Remove any spaces
+    )
+
+    # Convert valid numbers to integers, ignoring invalid entries
+    df['NHS number'] = pd.to_numeric(df['NHS number'], errors='coerce').astype('Int64')
     # Convert specified columns to date only (no time part)
     for col in col_list:
         df[col] = pd.to_datetime(df[col], errors="coerce").dt.date
+
     df['age'] = df['DOB'].apply(calculate_age)
     df['lenght_of_diagnosis_months'] = df['First DM Diagnosis'].apply(calculate_length_of_diagnosis)
     # Apply 'calculate_due_status' based on 'test_info' dictionary

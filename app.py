@@ -4,8 +4,7 @@ import streamlit_shadcn_ui as ui
 import pendulum
 from datetime import datetime, date
 import seaborn as sns
-import matplotlib.pyplot as plt
-import webbrowser
+from streamlit_pdf_viewer import pdf_viewer
 
 from main import (
     load_and_preprocess_dashboard,
@@ -42,8 +41,8 @@ tab_selector = ui.tabs(
         "Online Pre-assessment",
         "HCA Self-book",
         "Rewind",
-        "Patient Search",
         "Filter Dataframe",
+        "Predicted Hba1c - Regression",
         "Guidelines",
     ],
     default_value="Quick Start",
@@ -289,3 +288,26 @@ Use the Pre-assessment on this tool to target the appropriate cohort of patients
     st.write("For assistance with using this tool or setting up a Tally integration please contact me via a GitHub issue.")
     st.write("**Thank you**!")
     st.html("<a href='https://github.com/janduplessis883/diabetes-streamlit'><img alt='Static Badge' src='https://img.shields.io/badge/GitHub-jandupplessis883-%23f09235?logo=github'></a>")
+
+
+elif tab_selector == "Predicted Hba1c - Regression":
+    st.image("search.png")
+    st.write("This app will soon include a feature to predict patients’ next **HbA1c levels** based on their medical history. A regression model is being trained on data from the **Brompton Health PCN** to support this functionality.")
+    st.markdown("""
+                Predicting HbA1c levels using machine learning has been the focus of several studies. Here are some notable papers:
+1. “**Machine Learning to Identify Predictors of Glycemic Control in Type 2 Diabetes: An Analysis of Target HbA1c Reduction Using Empagliflozin/Linagliptin Data**”
+This study employs machine learning to analyze clinical trial data, identifying patient characteristics associated with achieving and maintaining target HbA1c levels. (Springer Link)
+2. “**Improving Current Glycated Hemoglobin Prediction in Adults: Use of Machine Learning Models**”
+This research demonstrates that machine learning models can effectively predict current HbA1c levels (≥5.7% or less) by utilizing patients’ longitudinal data, enhancing the performance and importance of various predictors. (JMIR Medical Informatics)
+3. “**Machine Learning and Deep Learning Predictive Models for Type 2 Diabetes: A Systematic Review**”
+This systematic review compares various machine learning and deep learning models for predicting type 2 diabetes, highlighting the effectiveness of tree-based algorithms and the challenges in model interpretability. (DMS Journal)
+4. “**Machine Learning Approaches to Predict Risks of Diabetic Complications and Poor Glycemic Control in Nonadherent Type 2 Diabetes**”
+This paper explores machine learning techniques to predict the risks of diabetic complications and poor glycemic control, emphasizing the role of HbA1c as a critical predictor. (Frontiers)
+5. “**Predictive Modelling of Glycated Hemoglobin Levels Using Machine Learning Regressors**”
+This study develops a methodology for predicting HbA1c levels using various machine learning regression algorithms, demonstrating the potential for improved diabetes management. (Iieta)
+""")
+
+    container_pdf, container_chat = st.columns([50, 50])
+
+
+    pdf_viewer("hba1c-paper.pdf")
