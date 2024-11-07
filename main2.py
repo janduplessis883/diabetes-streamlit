@@ -20,11 +20,47 @@ test_info = {
         "due_col": "egfr_due",
     },
     "foot_due": {"date_col": "Foot Risk", "due_col": "foot_due"},
-        "urine_acr_due": {
+    "urine_acr_due": {
         "date_col": "Urine ACR",
         "value_col": "",
         "threshold_value": None,
         "due_col": "urine_acr_due",
+    },
+    "annual_review_due": {
+        "date_col": "Annual Review Done",
+        "value_col": "",
+        "threshold_value": 1,
+        "due_col": "annual_review_due",
+    },
+    "bp_due": {
+        "date_col": "BP",
+        "value_col": "",
+        "threshold_value": 1,
+        "due_col": "bp_due",
+    },
+    "dds2_due": {
+        "date_col": "MH Screen - DDS or PHQ",
+        "value_col": "",
+        "threshold_value": 1,
+        "due_col": "dds2_due",
+    },
+    "goals_due": {
+        "date_col": "Urine ACR",
+        "value_col": "",
+        "threshold_value": 1,
+        "due_col": "goals_due",
+    },
+    "care_plan_due": {
+        "date_col": "Care plan",
+        "value_col": "",
+        "threshold_value": 1,
+        "due_col": "care_plan_due",
+    },
+    "eductation_due": {
+        "date_col": "Education",
+        "value_col": "",
+        "threshold_value": 1,
+        "due_col": "education_due",
     },
 }
 
@@ -33,7 +69,16 @@ test_mapping = {
     "Lipids": "lipids_due",
     "eGFR": "egfr_due",
     "Urine ACR": "urine_acr_due",
-    "Foot Risk": "foot_due",
+    "Foot Check": "foot_due",
+}
+
+online_mapping = {
+    "Annual Review Done": "annual_review_due",
+    "BP": "bp_due",
+    "MH Screen - DDS or PHQ": "dss2_due",
+    "Patient goals": "goals_due",
+    "Care plan": "care_plan_due",
+    "Education": "education_due",
 }
 
 col_list = [
@@ -342,7 +387,7 @@ def download_sms_csv(rewind_df, sms_df, filename="dm_rewind_sms.csv"):
 
     # Display download button in Streamlit
     st.download_button(
-        label="Download Rewind SMS List as CSV",
+        label=f"Download **{filename}**",
         data=csv,
         file_name=filename,
         mime="text/csv",
