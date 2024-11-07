@@ -306,7 +306,7 @@ This paper explores machine learning techniques to predict the risks of diabetic
 5. “**Predictive Modelling of Glycated Hemoglobin Levels Using Machine Learning Regressors**”
 This study develops a methodology for predicting HbA1c levels using various machine learning regression algorithms, demonstrating the potential for improved diabetes management. (Iieta)
 """)
-
+    st.image('r2.png')
     container_pdf, container_chat = st.columns([50, 50])
 
 
