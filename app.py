@@ -280,7 +280,7 @@ Use the Pre-assessment on this tool to target the appropriate cohort of patients
         st.write("**Tally form preview:**")
         with st.container(height=350, border=True):
             st.image('tallyform.png')
-        ui.link_button(text="Download DM Pre-assessment Form from Tally", url="https://tally.so/templates/diabetes-pre-assessment-questionnaire/mYQ4zm", key="link_btn")
+        ui.link_button(text="Download Pre-assessment Form Template", url="https://tally.so/templates/diabetes-pre-assessment-questionnaire/mYQ4zm", key="link_btn")
     with c2:
         st.container(height=45, border=False)
         st.image('flowchart.png')
