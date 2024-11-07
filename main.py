@@ -331,7 +331,7 @@ def plot_histograms(data, columns, color="#f09235"):
     - color (str): Color for the histograms. Default is '#f09235'.
     """
 
-    fig, axes = plt.subplots(2, 5, figsize=(20, 5), sharey=True)
+    fig, axes = plt.subplots(2, 5, figsize=(20, 6), sharey=True)
 
     # Loop over each column and create a histogram
     for i, col in enumerate(columns):
