@@ -60,8 +60,8 @@ if tab_selector == "Online Pre-assessment":
     with c1:
         selected_tests = st.multiselect(
             "Select **Pre-assessment Criteria** to include:",
-            options=["Annual Review", "Care Plan", "DDS-2", "Patient Goals", "Structured Education", "BP"],
-            default=["BP"],
+            options=["Annual Review Done", "Care plan", "MH Screen - DDS or PHQ", "Patient goals", "Education", "BP"],
+            default=["Annual Review Done"],
         )
     with c2:
         st.write()

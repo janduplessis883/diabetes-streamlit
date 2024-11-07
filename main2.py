@@ -75,7 +75,7 @@ test_mapping = {
 online_mapping = {
     "Annual Review Done": "annual_review_due",
     "BP": "bp_due",
-    "MH Screen - DDS or PHQ": "dss2_due",
+    "MH Screen - DDS or PHQ": "dds2_due",
     "Patient goals": "goals_due",
     "Care plan": "care_plan_due",
     "Education": "education_due",
