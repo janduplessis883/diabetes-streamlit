@@ -66,20 +66,25 @@ if tab_selector == "Online Pre-assessment":
     with c2:
         st.write()
     # Call the filter_due_patients function with the DataFrame and selected tests
-    due_patients = filter_due_patients(df, selected_tests, online_mapping)
+    try:
+        due_patients = filter_due_patients(df, selected_tests, online_mapping)
 
-    if not due_patients.empty:
-        st.markdown(f"Patient count: **{due_patients.shape[0]}**")
-        plot_histograms(due_patients, plot_columns)
-        st.dataframe(due_patients, height=300)
-        download_sms_csv(due_patients, sms_df, filename="online_preassessment_sms.csv")
+    except NameError as e:
+        st.warning(f"Upload csv data to use this tool. Error: {e}")
 
+    try:
+        if not due_patients.empty:
+            st.markdown(f"Patient count: **{due_patients.shape[0]}**")
+            plot_histograms(due_patients, plot_columns)
+            st.dataframe(due_patients, height=300)
+            download_sms_csv(due_patients, sms_df, filename="online_preassessment_sms.csv")
 
-    else:
-        st.warning(
-            "Please upload the necessary CSV file to display the dataframe. Select at least one criterion to filter by."
-        )
-
+        else:
+            st.warning(
+                "Please upload the necessary CSV file to display the dataframe. Select at least one criterion to filter by."
+            )
+    except NameError as e:
+        st.warning(f"Upload csv data to use this tool. Error: {e}")
 
 
 
@@ -102,20 +107,25 @@ elif tab_selector == "HCA Self-book":
     with c2:
         st.write()
     # Call the filter_due_patients function with the DataFrame and selected tests
-    due_patients = filter_due_patients(df, selected_tests, test_mapping)
+    try:
+        due_patients = filter_due_patients(df, selected_tests, test_mapping)
+    except NameError as e:
+        st.warning(f"Upload csv data to use this tool. Error: {e}")
 
-    if not due_patients.empty:
-        st.markdown(f"Patient count: **{due_patients.shape[0]}**")
-        plot_histograms(due_patients, plot_columns)
-        st.dataframe(due_patients, height=300)
-        download_sms_csv(due_patients, sms_df, filename="hca_selfbook_sms.csv")
+    try:
+        if not due_patients.empty:
+            st.markdown(f"Patient count: **{due_patients.shape[0]}**")
+            plot_histograms(due_patients, plot_columns)
+            st.dataframe(due_patients, height=300)
+            download_sms_csv(due_patients, sms_df, filename="hca_selfbook_sms.csv")
 
 
-    else:
-        st.warning(
-            "Please upload the necessary CSV file to display the dataframe. Select at least one criterion to filter by."
-        )
-
+        else:
+            st.warning(
+                "Please upload the necessary CSV file to display the dataframe. Select at least one criterion to filter by."
+            )
+    except NameError as e:
+        st.warning(f"Upload csv data to use this tool. Error: {e}")
 
 elif tab_selector == "Filter Dataframe":
     st.image("filter.png")
