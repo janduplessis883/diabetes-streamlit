@@ -277,7 +277,7 @@ Use the Pre-assessment on this tool to target the appropriate cohort of patients
 4. Use the navigation at the top to optimize your groups for recall.
 5. Once you are happy with your patient cohort, download a custom CSV using the **Download Button** on each page. This will have the exact list of patient you have selected using the tool.""")
         st.write("**Tally form preview:**")
-        with st.container(height=350, border=True):
+        with st.container(height=450, border=True):
             st.image('tallyform.png')
         ui.link_button(text="Download Pre-assessment Form Template", url="https://tally.so/templates/diabetes-pre-assessment-questionnaire/mYQ4zm", key="link_btn")
     with c2:
