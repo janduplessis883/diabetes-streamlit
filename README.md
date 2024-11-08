@@ -79,8 +79,8 @@ The tool is optimized to assist with the following steps in the diabetes recall 
 
 For questions or assistance with using the tool or setting up Tally integrations, please open a GitHub issue.
 
----
+---  
+<img alt='Static Badge' src='https://img.shields.io/badge/GitHub-jandupplessis883-%23f09235?logo=github'>  
 
-**Thank you for using the **Diabetes Dashboard** to enhance patient care and streamline diabetes management in primary care.**  <BR>
-<img alt='Static Badge' src='https://img.shields.io/badge/GitHub-jandupplessis883-%23f09235?logo=github'>
+
 If you like this project please STAR it on GitHub
