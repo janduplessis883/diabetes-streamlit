@@ -26,9 +26,11 @@ st.logo("data_upload.png", size="large")
 # File upload fields for CSVs
 sms_file = st.sidebar.file_uploader("Upload **Diabetes Register Accurx SMS** csv", type="csv")
 dashboard_file = st.sidebar.file_uploader("Upload **Diabetes Dashboard** as csv", type="csv")
+
 st.sidebar.subheader("Notion Integration")
 notion_token = st.sidebar.text_input("Enter **Notion API Token**:")
 notion_database = st.sidebar._text_input("Enter **Notion Database ID**:")
+
 st.sidebar.subheader("Google Sheet Integration")
 google_sheet_url = st.sidebar.text_input("Enter **Google Sheet URL**:")
 
@@ -168,7 +170,7 @@ elif tab_selector == "Filter Dataframe":
         # Create sliders for each metric and store the selected range
         for key, (label, min_val, max_val) in metrics.items():
             filter_values[key] = st.sidebar.slider(
-                f"Select {label} range",
+                f"Select **{label}** range",
                 min_value=float(min_val),
                 max_value=float(max_val),
                 value=(float(min_val), float(max_val)),
@@ -195,6 +197,7 @@ elif tab_selector == "Filter Dataframe":
 
 elif tab_selector == "Rewind":
     st.image("rewind.png")
+    st.write("Patients eligible for referral to **Rewind**.")
     if "sms_df" not in globals() or "df" not in globals():
         st.warning("Please upload both CSV files to proceed.")
     else:
