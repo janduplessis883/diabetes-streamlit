@@ -26,6 +26,11 @@ st.logo("data_upload.png", size="large")
 # File upload fields for CSVs
 sms_file = st.sidebar.file_uploader("Upload **Diabetes Register Accurx SMS** csv", type="csv")
 dashboard_file = st.sidebar.file_uploader("Upload **Diabetes Dashboard** as csv", type="csv")
+st.sidebar.subheader("Notion Integration")
+notion_token = st.sidebar.text_input("Enter **Notion API Token**:")
+notion_database = st.sidebar._text_input("Enter **Notion Database ID**:")
+st.sidebar.subheader("Google Sheet Integration")
+google_sheet_url = st.sidebar.text_input("Enter **Google Sheet URL**:")
 
 # Load dataframes if files are uploaded
 if sms_file is not None:
