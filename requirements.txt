@@ -9,3 +9,4 @@ st-gsheets-connection
 google-auth
 notion-client
 st-gsheets-connection
+numpy

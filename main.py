@@ -4,6 +4,7 @@ from datetime import datetime, date, timedelta
 import matplotlib.pyplot as plt
 import seaborn as sns
 import streamlit as st
+import numpy as np
 
 from notionhelper import *
 
@@ -278,7 +279,7 @@ def calculate_length_of_diagnosis(diagnosis_date):
 
     return months
 
-
+@st.cache_data
 def load_and_preprocess_dashboard(file_path, col_list, test_info):
     """
     Load, preprocess, and calculate due columns for the dashboard.
@@ -332,7 +333,7 @@ plot_columns = [
     "Non-HDL Chol",
 ]
 
-def plot_histograms(data, columns, color="#f09235"):
+def plot_histograms(data, columns, color="#e3964a"):
     """
     Creates a 2x5 grid of histograms for each column specified in the `columns` list
     from the provided `data` DataFrame, and displays the plot in Streamlit.
@@ -343,10 +344,24 @@ def plot_histograms(data, columns, color="#f09235"):
     - color (str): Color for the histograms. Default is '#f09235'.
     """
 
-    fig, axes = plt.subplots(2, 5, figsize=(20, 6), sharey=True)
+    fig, axes = plt.subplots(2, 5, figsize=(22, 6), sharey=True)
 
     # Loop over each column and create a histogram
     for i, col in enumerate(columns):
+
+        if col == 'age':
+            color = "#459aca"
+        elif col == "lenght_of_diagnosis_months":
+            color = "#1d2d3d"
+        elif col == "HbA1c value":
+            color = "#b92a1b"
+        elif col == "DBP" or col == "SBP":
+            color = "#98c25e"
+        elif col == "Latest eGFR":
+            color = "#971e57"
+        elif col == "Total Chol" or col =="Latest LDL" or col == "Latest HDL" or col == "Non-HDL Chol":
+            color = "#e3964a"
+
         row, col_index = divmod(i, 5)  # Determine row and column index in 2x5 grid
         sns.histplot(
             data=data,
@@ -354,6 +369,7 @@ def plot_histograms(data, columns, color="#f09235"):
             ax=axes[row, col_index],
             color=color,
             bins=15,
+            kde = False
         )
 
         # Remove top and right borders
@@ -372,15 +388,31 @@ def plot_histograms(data, columns, color="#f09235"):
     # Display the plot in Streamlit
     st.pyplot(fig)
 
-def extract_sms_df(intervention_df, sms_df):
+
+@st.cache_data
+def load_notion_df(notion_token, notion_database):
+    if notion_token != "" and notion_database != "":
+        nh = NotionHelper(notion_token, notion_database)
+        notion_df = nh.get_all_pages_as_dataframe()
+        return notion_df
+
+
+
+def extract_sms_df(intervention_df, sms_df, notion_df):
     intervention_df['NHS number'] = intervention_df['NHS number'].astype(int)
     sms_df["NHS number"] = sms_df["NHS number"].astype(int)
     output_sms_df = sms_df.merge(intervention_df[["NHS number"]], on="NHS number", how="inner")
 
-    print(f"Patient count: {output_sms_df.shape[0]}")
-    return output_sms_df
+    patients_to_contact = output_sms_df[~output_sms_df['NHS number'].isin(notion_df['NHS number'])]
+    return patients_to_contact
 
-def download_sms_csv(rewind_df, sms_df, notion_token, notion_database, filename="dm_rewind_sms.csv"):
+
+
+
+
+
+
+def download_sms_csv(rewind_df, sms_df, notion_df, filename="dm_rewind_sms.csv"):
     """
     Extracts an SMS DataFrame, converts it to CSV, and provides a Streamlit download button.
 
@@ -391,10 +423,7 @@ def download_sms_csv(rewind_df, sms_df, notion_token, notion_database, filename=
     """
 
     # Extract the SMS DataFrame
-    output_sms_df = extract_sms_df(rewind_df, sms_df)
-    if notion_token != "":
-        nh = NotionHelper(notion_token, notion_database)
-        notion_df = nh.get_all_pages_as_dataframe()
+    output_sms_df = extract_sms_df(rewind_df, sms_df, notion_df)
 
     # Convert DataFrame to CSV format
     csv = output_sms_df.to_csv(index=False)

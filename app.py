@@ -6,6 +6,7 @@ import seaborn as sns
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 from streamlit_gsheets import GSheetsConnection
+import numpy as np
 
 from main import (
     load_and_preprocess_dashboard,
@@ -16,7 +17,8 @@ from main import (
     plot_columns,
     plot_histograms,
     download_sms_csv,
-    online_mapping
+    online_mapping,
+    load_notion_df
 )
 from sheethelper import *
 from notionhelper import *
@@ -36,23 +38,10 @@ def set_notion_credentials(notion_token, notion_database):
     st.session_state["notion_database"] = notion_database
     st.session_state["notion_connected"] = 'connected'
 
-
-
-def load_notion_df(notion_token, notion_database):
-    """
-    Load data from the Notion database and return it as a DataFrame.
-    """
-    try:
-        # Initialize NotionHelper with the token and database ID
-        nh = NotionHelper(notion_token, notion_database)
-
-        # Load the database and return as a DataFrame
-        notion_data_df = nh.get_all_pages_as_dataframe()
-        return notion_data_df
-    except Exception as e:
-        st.sidebar.error("Error loading Notion data. Please check your token and database ID.")
-        st.write(e)
-        return None
+def disconnect_notion():
+    st.session_state["notion_token"] = ""
+    st.session_state["notion_database"] = ""
+    st.session_state["notion_connected"] = 'offline'
 
 
 
@@ -65,6 +54,8 @@ st.logo("data_upload.png", size='large')
 
 if st.session_state['notion_connected'] == 'connected':
     st.sidebar.image("notion_connected.png")
+elif st.session_state['notion_connected'] == 'offline':
+    st.sidebar.image("notion_offline.png")
 else:
     st.sidebar.image("notion_offline.png")
 
@@ -84,22 +75,24 @@ if option == "Notion":
         notion_database = st.text_input("Notion Database ID", value=st.session_state["notion_database"])
 
         # Form submit button
-        notion_submit = st.form_submit_button("Connect to Notion")
+
 
         # Check if form was submitted
-        if notion_submit:
-            # Save to session state using the callback logic
-            set_notion_credentials(notion_token, notion_database)
-            st.rerun()
+        if st.session_state["notion_connected"] == 'offline':
+            notion_submit = st.form_submit_button("Connect to Notion")
+            if notion_submit:
+                # Save to session state using the callback logic
+                set_notion_credentials(notion_token, notion_database)
+                st.rerun()
+        elif st.session_state["notion_connected"] == 'connected':
+            disconnect = st.form_submit_button("Disconnect Notion")
+            if disconnect:
+                disconnect_notion()
+                st.rerun()
 
 
 elif option == "Google Sheets":
-        st.write("Google Sheets Connector coming soon...")
-
-
-
-
-
+    st.write("Google Sheets Connector coming soon...")
 
 
 
@@ -111,6 +104,13 @@ if sms_file is not None:
 if dashboard_file is not None:
     df = load_and_preprocess_dashboard(dashboard_file, col_list, test_info)
 
+if st.session_state["notion_connected"] == 'connected':
+    notion_data_df = load_notion_df(st.session_state["notion_token"], st.session_state["notion_database"])
+else:
+    notion_data_df = pd.DataFrame({
+                            "NHS number": [np.nan, np.nan],
+                            "Name": ["Dataframe", "Empty"],
+                            })
 
 tab_selector = ui.tabs(
     options=[
@@ -151,10 +151,14 @@ if tab_selector == "Online Pre-assessment":
 
     try:
         if not due_patients.empty:
-            st.markdown(f"Patient count: **{due_patients.shape[0]}**")
+
             plot_histograms(due_patients, plot_columns)
+            import streamlit_shadcn_ui as ui
+
+            ui.badges(badge_list=[("Patient Count: ", "outline"), (due_patients.shape[0], "default")], class_name="flex gap-2", key="badges1")
+
             st.dataframe(due_patients, height=300)
-            download_sms_csv(due_patients, sms_df, st.session_state["notion_token"], st.session_state["notion_database"], filename="online_preassessment_sms.csv")
+            download_sms_csv(due_patients, sms_df, notion_data_df, filename="online_preassessment_sms.csv")
 
         else:
             st.warning(
@@ -191,10 +195,12 @@ elif tab_selector == "HCA Self-book":
 
     try:
         if not due_patients.empty:
-            st.markdown(f"Patient count: **{due_patients.shape[0]}**")
+
             plot_histograms(due_patients, plot_columns)
+
+            ui.badges(badge_list=[("Patient Count: ", "outline"), (due_patients.shape[0], "default")], class_name="flex gap-2", key="badges2")
             st.dataframe(due_patients, height=300)
-            download_sms_csv(due_patients, sms_df, st.session_state["notion_token"], st.session_state["notion_database"], filename="hca_selfbook_sms.csv")
+            download_sms_csv(due_patients, sms_df, notion_data_df, filename="hca_selfbook_sms.csv")
 
 
         else:
@@ -256,10 +262,10 @@ elif tab_selector == "Filter Dataframe":
             ]
 
         # Display the filtered DataFram
-        st.markdown(f"Patient count: **{filtered_df.shape[0]}**")
         plot_histograms(filtered_df, plot_columns)
+        ui.badges(badge_list=[("Patient Count: ", "outline"), (filtered_df.shape[0], "default")], class_name="flex gap-2", key="badges3")
         st.dataframe(filtered_df, height=300)  # Only shows rows within the slider-selected range
-        download_sms_csv(filtered_df, sms_df, st.session_state["notion_token"], st.session_state["notion_database"], filename="filtered_data_sms.csv")
+        download_sms_csv(filtered_df, sms_df, notion_data_df, filename="filtered_data_sms.csv")
 
 
 
@@ -275,19 +281,13 @@ elif tab_selector == "Rewind":
         rewind_df = df[
             (df["Eligible for REWIND"] == "Yes") & (df["REWIND - Started"] == 0)
         ]
-        st.markdown(f"Patient count: **{rewind_df.shape[0]}**")
+        ui.badges(badge_list=[("Patient Count: ", "outline"), (rewind_df.shape[0], "default")], class_name="flex gap-2", key="badges4")
         st.dataframe(rewind_df)
-        download_sms_csv(rewind_df, sms_df, st.session_state["notion_token"], st.session_state["notion_database"], filename="dm_rewind_sms.csv")
+        download_sms_csv(rewind_df, sms_df, notion_data_df, filename="dm_rewind_sms.csv")
 
 
 
 
-
-
-
-
-elif tab_selector == "Patient Search":
-    st.image("search.png")
 
 
 elif tab_selector == "Guidelines":
@@ -386,10 +386,11 @@ This paper explores machine learning techniques to predict the risks of diabetic
 This study develops a methodology for predicting HbA1c levels using various machine learning regression algorithms, demonstrating the potential for improved diabetes management. (Iieta)
 """)
     st.image('r2.png')
-    container_pdf, container_chat = st.columns([50, 50])
+    st.image('regression2.png')
 
-
-    pdf_viewer("hba1c-paper.pdf")
+    st.subheader("Systematic Review: HbA1c Prediction")
+    with st.container(height=650, border=True):
+        pdf_viewer("hba1c-paper.pdf")
 
 
 
@@ -400,15 +401,6 @@ elif tab_selector == "Integrations":
 
     st.subheader("Notion")
     st.write(st.session_state)
-    # Show current token and database ID
-    st.write(f"Current **Notion Token**: {st.session_state.notion_token}")
-    st.write(f"Current **Notion Database ID**: {st.session_state.notion_database}")
 
 
-    # Automatically load Notion data if connected
-    if st.session_state.notion_connected and st.session_state.notion_token and st.session_state.notion_database:
-        notion_data_df = load_notion_df(st.session_state.notion_token, st.session_state.notion_database)
-
-        if notion_data_df is not None:
-
-            st.write(notion_data_df)
+    st.dataframe(notion_data_df)
