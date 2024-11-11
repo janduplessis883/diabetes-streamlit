@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import streamlit as st
 
+from notionhelper import *
+
 test_info = {
     "hba1c_due": {
         "date_col": "HbA1c",
@@ -373,13 +375,12 @@ def plot_histograms(data, columns, color="#f09235"):
 def extract_sms_df(intervention_df, sms_df):
     intervention_df['NHS number'] = intervention_df['NHS number'].astype(int)
     sms_df["NHS number"] = sms_df["NHS number"].astype(int)
-    output_sms_df = sms_df.merge(
-        intervention_df[["NHS number"]], on="NHS number", how="inner"
-    )
+    output_sms_df = sms_df.merge(intervention_df[["NHS number"]], on="NHS number", how="inner")
+
     print(f"Patient count: {output_sms_df.shape[0]}")
     return output_sms_df
 
-def download_sms_csv(rewind_df, sms_df, filename="dm_rewind_sms.csv"):
+def download_sms_csv(rewind_df, sms_df, notion_token, notion_database, filename="dm_rewind_sms.csv"):
     """
     Extracts an SMS DataFrame, converts it to CSV, and provides a Streamlit download button.
 
@@ -391,6 +392,9 @@ def download_sms_csv(rewind_df, sms_df, filename="dm_rewind_sms.csv"):
 
     # Extract the SMS DataFrame
     output_sms_df = extract_sms_df(rewind_df, sms_df)
+    if notion_token != "":
+        nh = NotionHelper(notion_token, notion_database)
+        notion_df = nh.get_all_pages_as_dataframe()
 
     # Convert DataFrame to CSV format
     csv = output_sms_df.to_csv(index=False)

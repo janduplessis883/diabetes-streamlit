@@ -5,3 +5,7 @@ streamlit-shadcn-ui
 seaborn
 matplotlib
 streamlit-pdf-viewer
+st-gsheets-connection
+google-auth
+notion-client
+st-gsheets-connection

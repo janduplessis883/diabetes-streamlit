@@ -1,10 +1,11 @@
-import streamlit as st
 import pandas as pd
 import streamlit_shadcn_ui as ui
 import pendulum
 from datetime import datetime, date
 import seaborn as sns
+import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
+from streamlit_gsheets import GSheetsConnection
 
 from main import (
     load_and_preprocess_dashboard,
@@ -17,22 +18,91 @@ from main import (
     download_sms_csv,
     online_mapping
 )
+from sheethelper import *
+from notionhelper import *
 
+
+# Initialize session states if they haven't been set already
+if "notion_token" not in st.session_state:
+    st.session_state["notion_token"] = ""
+if "notion_database" not in st.session_state:
+    st.session_state["notion_database"] = ""
+if "notion_connected" not in st.session_state:
+    st.session_state["notion_connected"] = 'offline'
+
+# Define a callback function to set the token and database in session state
+def set_notion_credentials(notion_token, notion_database):
+    st.session_state["notion_token"] = notion_token
+    st.session_state["notion_database"] = notion_database
+    st.session_state["notion_connected"] = 'connected'
+
+
+
+def load_notion_df(notion_token, notion_database):
+    """
+    Load data from the Notion database and return it as a DataFrame.
+    """
+    try:
+        # Initialize NotionHelper with the token and database ID
+        nh = NotionHelper(notion_token, notion_database)
+
+        # Load the database and return as a DataFrame
+        notion_data_df = nh.get_all_pages_as_dataframe()
+        return notion_data_df
+    except Exception as e:
+        st.sidebar.error("Error loading Notion data. Please check your token and database ID.")
+        st.write(e)
+        return None
+
+
+
+# Set page configuration
 st.set_page_config(layout="wide", page_title="Diabetes Dashboard")
-st.image("dashboard.png")
 
-st.logo("data_upload.png", size="large")
+# Display images
+st.image("dashboard.png")
+st.logo("data_upload.png", size='large')
+
+if st.session_state['notion_connected'] == 'connected':
+    st.sidebar.image("notion_connected.png")
+else:
+    st.sidebar.image("notion_offline.png")
 
 # File upload fields for CSVs
 sms_file = st.sidebar.file_uploader("Upload **Diabetes Register Accurx SMS** csv", type="csv")
 dashboard_file = st.sidebar.file_uploader("Upload **Diabetes Dashboard** as csv", type="csv")
 
-st.sidebar.subheader("Notion Integration")
-notion_token = st.sidebar.text_input("Enter **Notion API Token**:")
-notion_database = st.sidebar._text_input("Enter **Notion Database ID**:")
+# Radio button for selecting either Notion or Google Sheets
+option = st.sidebar.radio("Select **Integration**:", ("Notion", "Google Sheets"), key="integration_option")
 
-st.sidebar.subheader("Google Sheet Integration")
-google_sheet_url = st.sidebar.text_input("Enter **Google Sheet URL**:")
+
+if option == "Notion":
+
+    # Notion credentials form
+    with st.sidebar.form("notion_form", border=False):
+        notion_token = st.text_input("Notion Token", type="password", value=st.session_state["notion_token"])
+        notion_database = st.text_input("Notion Database ID", value=st.session_state["notion_database"])
+
+        # Form submit button
+        notion_submit = st.form_submit_button("Connect to Notion")
+
+        # Check if form was submitted
+        if notion_submit:
+            # Save to session state using the callback logic
+            set_notion_credentials(notion_token, notion_database)
+            st.rerun()
+
+
+elif option == "Google Sheets":
+        st.write("Google Sheets Connector coming soon...")
+
+
+
+
+
+
+
+
 
 # Load dataframes if files are uploaded
 if sms_file is not None:
@@ -51,6 +121,7 @@ tab_selector = ui.tabs(
         "Filter Dataframe",
         "Predicted Hba1c - Regression",
         "Guidelines",
+        "Integrations",
     ],
     default_value="Quick Start",
     key="tab3",
@@ -83,7 +154,7 @@ if tab_selector == "Online Pre-assessment":
             st.markdown(f"Patient count: **{due_patients.shape[0]}**")
             plot_histograms(due_patients, plot_columns)
             st.dataframe(due_patients, height=300)
-            download_sms_csv(due_patients, sms_df, filename="online_preassessment_sms.csv")
+            download_sms_csv(due_patients, sms_df, st.session_state["notion_token"], st.session_state["notion_database"], filename="online_preassessment_sms.csv")
 
         else:
             st.warning(
@@ -123,7 +194,7 @@ elif tab_selector == "HCA Self-book":
             st.markdown(f"Patient count: **{due_patients.shape[0]}**")
             plot_histograms(due_patients, plot_columns)
             st.dataframe(due_patients, height=300)
-            download_sms_csv(due_patients, sms_df, filename="hca_selfbook_sms.csv")
+            download_sms_csv(due_patients, sms_df, st.session_state["notion_token"], st.session_state["notion_database"], filename="hca_selfbook_sms.csv")
 
 
         else:
@@ -188,7 +259,7 @@ elif tab_selector == "Filter Dataframe":
         st.markdown(f"Patient count: **{filtered_df.shape[0]}**")
         plot_histograms(filtered_df, plot_columns)
         st.dataframe(filtered_df, height=300)  # Only shows rows within the slider-selected range
-        download_sms_csv(filtered_df, sms_df, filename="filtered_data_sms.csv")
+        download_sms_csv(filtered_df, sms_df, st.session_state["notion_token"], st.session_state["notion_database"], filename="filtered_data_sms.csv")
 
 
 
@@ -206,7 +277,7 @@ elif tab_selector == "Rewind":
         ]
         st.markdown(f"Patient count: **{rewind_df.shape[0]}**")
         st.dataframe(rewind_df)
-        download_sms_csv(rewind_df, sms_df, filename="dm_rewind_sms.csv")
+        download_sms_csv(rewind_df, sms_df, st.session_state["notion_token"], st.session_state["notion_database"], filename="dm_rewind_sms.csv")
 
 
 
@@ -319,3 +390,25 @@ This study develops a methodology for predicting HbA1c levels using various mach
 
 
     pdf_viewer("hba1c-paper.pdf")
+
+
+
+
+
+elif tab_selector == "Integrations":
+    st.image("integrations.png")
+
+    st.subheader("Notion")
+    st.write(st.session_state)
+    # Show current token and database ID
+    st.write(f"Current **Notion Token**: {st.session_state.notion_token}")
+    st.write(f"Current **Notion Database ID**: {st.session_state.notion_database}")
+
+
+    # Automatically load Notion data if connected
+    if st.session_state.notion_connected and st.session_state.notion_token and st.session_state.notion_database:
+        notion_data_df = load_notion_df(st.session_state.notion_token, st.session_state.notion_database)
+
+        if notion_data_df is not None:
+
+            st.write(notion_data_df)
