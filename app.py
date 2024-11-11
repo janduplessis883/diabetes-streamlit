@@ -50,7 +50,7 @@ st.set_page_config(layout="wide", page_title="Diabetes Dashboard")
 
 # Display images
 st.image("dashboard.png")
-st.logo("data_upload.png", size='large')
+
 
 if st.session_state['notion_connected'] == 'connected':
     st.sidebar.image("notion_connected.png")
@@ -58,11 +58,12 @@ elif st.session_state['notion_connected'] == 'offline':
     st.sidebar.image("notion_offline.png")
 else:
     st.sidebar.image("notion_offline.png")
-
+st.sidebar.subheader("Upload Data")
 # File upload fields for CSVs
 sms_file = st.sidebar.file_uploader("Upload **Diabetes Register Accurx SMS** csv", type="csv")
 dashboard_file = st.sidebar.file_uploader("Upload **Diabetes Dashboard** as csv", type="csv")
 
+st.sidebar.subheader("Integrations")
 # Radio button for selecting either Notion or Google Sheets
 option = st.sidebar.radio("Select **Integration**:", ("Notion", "Google Sheets"), key="integration_option")
 
