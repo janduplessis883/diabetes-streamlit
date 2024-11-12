@@ -68,7 +68,7 @@ st.set_page_config(layout="wide", page_title="A1Sense - Diabetes Dashboard")
 st.image("dashboard.png")
 
 
-if st.session_state['notion_connected'] == 'connected':
+if st.session_state['notion_connected'] == 'connected' and st.session_state['sheet_url'] == "":
     st.sidebar.image("notion_connected.png")
 elif st.session_state['notion_connected'] == 'offline' and st.session_state['sheet_url'] == "":
     st.sidebar.image("notion_offline.png")
@@ -78,6 +78,7 @@ elif st.session_state['sheet_url'] == '' and st.session_state['notion_connected'
     st.sidebar.image("google_offline.png")
 else:
     st.sidebar.image("notion_offline.png")
+
 
 
 st.sidebar.subheader("Upload Data")
