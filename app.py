@@ -85,7 +85,7 @@ st.sidebar.subheader("Upload Data")
 # File upload fields for CSVs
 sms_file = st.sidebar.file_uploader("Upload **Diabetes Register Accurx SMS** csv", type="csv")
 dashboard_file = st.sidebar.file_uploader("Upload **Diabetes Dashboard** as csv", type="csv")
-
+st.sidebar.divider()
 st.sidebar.subheader("Integrations")
 # Radio button for selecting either Notion or Google Sheets
 option = st.sidebar.radio("Select **Integration**:", ("Notion", "Google Sheets"), key="integration_option")
@@ -284,7 +284,7 @@ elif tab_selector == "Filter Dataframe":
 
         # Dictionary to store slider values for each metric
         filter_values = {}
-
+        st.sidebar.divider()
         # Create sliders for each metric and store the selected range
         for key, (label, min_val, max_val) in metrics.items():
             filter_values[key] = st.sidebar.slider(
