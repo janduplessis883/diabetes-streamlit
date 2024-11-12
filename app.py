@@ -7,6 +7,7 @@ import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 from streamlit_gsheets import GSheetsConnection
 import numpy as np
+import gspread
 
 from main import (
     load_and_preprocess_dashboard,
@@ -18,7 +19,8 @@ from main import (
     plot_histograms,
     download_sms_csv,
     online_mapping,
-    load_notion_df
+    load_notion_df,
+    load_google_sheet_df
 )
 from sheethelper import *
 from notionhelper import *
@@ -31,22 +33,36 @@ if "notion_database" not in st.session_state:
     st.session_state["notion_database"] = ""
 if "notion_connected" not in st.session_state:
     st.session_state["notion_connected"] = 'offline'
+if "sheet_url" not in st.session_state:
+    st.session_state["sheet_url"] = ""
 
 # Define a callback function to set the token and database in session state
 def set_notion_credentials(notion_token, notion_database):
     st.session_state["notion_token"] = notion_token
     st.session_state["notion_database"] = notion_database
     st.session_state["notion_connected"] = 'connected'
+    st.session_state["sheet_url"] = ""
 
 def disconnect_notion():
     st.session_state["notion_token"] = ""
     st.session_state["notion_database"] = ""
     st.session_state["notion_connected"] = 'offline'
+    st.session_state["sheet_url"] = ""
 
+def set_google_sheet_credentials(sheet_url):
+    st.session_state["notion_token"] = ""
+    st.session_state["notion_database"] = ""
+    st.session_state["notion_connected"] = 'offline'
+    st.session_state["sheet_url"] = sheet_url
 
+def disconnect_google_sheet():
+    st.session_state["notion_token"] = ""
+    st.session_state["notion_database"] = ""
+    st.session_state["notion_connected"] = 'offline'
+    st.session_state["sheet_url"] = ""
 
 # Set page configuration
-st.set_page_config(layout="wide", page_title="Diabetes Dashboard")
+st.set_page_config(layout="wide", page_title="A1Sense - Diabetes Dashboard")
 
 # Display images
 st.image("dashboard.png")
@@ -54,10 +70,16 @@ st.image("dashboard.png")
 
 if st.session_state['notion_connected'] == 'connected':
     st.sidebar.image("notion_connected.png")
-elif st.session_state['notion_connected'] == 'offline':
+elif st.session_state['notion_connected'] == 'offline' and st.session_state['sheet_url'] == "":
     st.sidebar.image("notion_offline.png")
+elif st.session_state['sheet_url'] != '' and st.session_state['notion_connected'] == "offline":
+    st.sidebar.image("google_online.png")
+elif st.session_state['sheet_url'] == '' and st.session_state['notion_connected'] == "offline":
+    st.sidebar.image("google_offline.png")
 else:
     st.sidebar.image("notion_offline.png")
+
+
 st.sidebar.subheader("Upload Data")
 # File upload fields for CSVs
 sms_file = st.sidebar.file_uploader("Upload **Diabetes Register Accurx SMS** csv", type="csv")
@@ -93,8 +115,23 @@ if option == "Notion":
 
 
 elif option == "Google Sheets":
-    st.write("Google Sheets Connector coming soon...")
 
+
+    with st.sidebar.form("google_form", border=False):
+        sheet_url = st.text_input("**Google Sheet URL**:", value=st.session_state["sheet_url"])
+
+        # Check if form was submitted
+        if st.session_state["sheet_url"] == "":
+            google_submit = st.form_submit_button("Connect to Google Sheets")
+            if google_submit:
+                # Save to session state using the callback logic
+                set_google_sheet_credentials(sheet_url)
+                st.rerun()
+        elif st.session_state["sheet_url"] != "":
+            disconnect = st.form_submit_button("Disconnect Google Sheets")
+            if disconnect:
+                disconnect_google_sheet()
+                st.rerun()
 
 
 
@@ -106,11 +143,13 @@ if dashboard_file is not None:
     df = load_and_preprocess_dashboard(dashboard_file, col_list, test_info)
 
 if st.session_state["notion_connected"] == 'connected':
-    notion_data_df = load_notion_df(st.session_state["notion_token"], st.session_state["notion_database"])
+    actioned_df = load_notion_df(st.session_state["notion_token"], st.session_state["notion_database"])
+elif st.session_state["notion_connected"] == 'offline' and st.session_state["sheet_url"] != "":
+    actioned_df = load_google_sheet_df(st.session_state["sheet_url"], 0)
 else:
-    notion_data_df = pd.DataFrame({
-                            "NHS number": [np.nan, np.nan],
-                            "Name": ["Dataframe", "Empty"],
+    actioned_df = pd.DataFrame({
+                            "NHS number": [np.nan],
+                            "Name": ["Empty"]
                             })
 
 tab_selector = ui.tabs(
@@ -159,7 +198,7 @@ if tab_selector == "Online Pre-assessment":
             ui.badges(badge_list=[("Patient Count: ", "outline"), (due_patients.shape[0], "default")], class_name="flex gap-2", key="badges1")
 
             st.dataframe(due_patients, height=300)
-            download_sms_csv(due_patients, sms_df, notion_data_df, filename="online_preassessment_sms.csv")
+            download_sms_csv(due_patients, sms_df, actioned_df, filename="online_preassessment_sms.csv")
 
         else:
             st.warning(
@@ -201,7 +240,7 @@ elif tab_selector == "HCA Self-book":
 
             ui.badges(badge_list=[("Patient Count: ", "outline"), (due_patients.shape[0], "default")], class_name="flex gap-2", key="badges2")
             st.dataframe(due_patients, height=300)
-            download_sms_csv(due_patients, sms_df, notion_data_df, filename="hca_selfbook_sms.csv")
+            download_sms_csv(due_patients, sms_df, actioned_df, filename="hca_selfbook_sms.csv")
 
 
         else:
@@ -266,7 +305,7 @@ elif tab_selector == "Filter Dataframe":
         plot_histograms(filtered_df, plot_columns)
         ui.badges(badge_list=[("Patient Count: ", "outline"), (filtered_df.shape[0], "default")], class_name="flex gap-2", key="badges3")
         st.dataframe(filtered_df, height=300)  # Only shows rows within the slider-selected range
-        download_sms_csv(filtered_df, sms_df, notion_data_df, filename="filtered_data_sms.csv")
+        download_sms_csv(filtered_df, sms_df, actioned_df, filename="filtered_data_sms.csv")
 
 
 
@@ -284,7 +323,7 @@ elif tab_selector == "Rewind":
         ]
         ui.badges(badge_list=[("Patient Count: ", "outline"), (rewind_df.shape[0], "default")], class_name="flex gap-2", key="badges4")
         st.dataframe(rewind_df)
-        download_sms_csv(rewind_df, sms_df, notion_data_df, filename="dm_rewind_sms.csv")
+        download_sms_csv(rewind_df, sms_df, actioned_df, filename="dm_rewind_sms.csv")
 
 
 
@@ -399,9 +438,7 @@ This study develops a methodology for predicting HbA1c levels using various mach
 
 elif tab_selector == "Integrations":
     st.image("integrations.png")
-
-    st.subheader("Notion")
     st.write(st.session_state)
 
-
-    st.dataframe(notion_data_df)
+    st.subheader("Actioned DF Loaded:")
+    st.dataframe(actioned_df)

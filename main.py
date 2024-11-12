@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import streamlit as st
 import numpy as np
+import gspread
 
 from notionhelper import *
 
@@ -389,13 +390,38 @@ def plot_histograms(data, columns, color="#e3964a"):
     st.pyplot(fig)
 
 
-@st.cache_data
+@st.cache_resource
 def load_notion_df(notion_token, notion_database):
     if notion_token != "" and notion_database != "":
         nh = NotionHelper(notion_token, notion_database)
         notion_df = nh.get_all_pages_as_dataframe()
         return notion_df
 
+@st.cache_resource
+def load_google_sheet_df(sheet_url, sheet_index):
+    credentials = {
+        "type": st.secrets.google_sheets.type,
+        "project_id": st.secrets.google_sheets.project_id,
+        "private_key_id": st.secrets.google_sheets.private_key_id,
+        "private_key": st.secrets.google_sheets.private_key,
+        "client_email": st.secrets.google_sheets.client_email,
+        "client_id": st.secrets.google_sheets.client_id,
+        "auth_uri": st.secrets.google_sheets.auth_uri,
+        "token_uri": st.secrets.google_sheets.token_uri,
+        "auth_provider_x509_cert_url": st.secrets.google_sheets.auth_provider_x509_cert_url,
+        "client_x509_cert_url": st.secrets.google_sheets.client_x509_cert_url,
+}
+
+    gc = gspread.service_account_from_dict(credentials)
+
+    sh = gc.open_by_url(sheet_url)
+    sheet = sh.get_worksheet_by_id(sheet_index)
+    records = sheet.get_all_records()
+    df = pd.DataFrame.from_dict(records)
+    df['NHS number'] = df['NHS number'].astype(str).replace("", np.nan)
+    df = df.dropna(subset=['NHS number'])
+    df['NHS number'] = df['NHS number'].astype(int)
+    return df
 
 
 def extract_sms_df(intervention_df, sms_df, notion_df):
