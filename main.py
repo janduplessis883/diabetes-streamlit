@@ -272,13 +272,13 @@ def calculate_length_of_diagnosis(diagnosis_date):
         diagnosis_date = diagnosis_date.date()
 
     today = datetime.today().date()
-    months = (today.year - diagnosis_date.year) * 12 + today.month - diagnosis_date.month
+    years = (today.year - diagnosis_date.year) + today.month - diagnosis_date.month
 
     # If the current day is earlier in the month than the diagnosis day, subtract one month
     if today.day < diagnosis_date.day:
-        months -= 1
+        years -= 1
 
-    return months
+    return years
 
 @st.cache_data
 def load_and_preprocess_dashboard(file_path, col_list, test_info):
@@ -314,7 +314,7 @@ def load_and_preprocess_dashboard(file_path, col_list, test_info):
         df[col] = pd.to_datetime(df[col], errors="coerce").dt.date
 
     df['age'] = df['DOB'].apply(calculate_age)
-    df['lenght_of_diagnosis_months'] = df['First DM Diagnosis'].apply(calculate_length_of_diagnosis)
+    df['lenght_of_diagnosis_years'] = df['First DM Diagnosis'].apply(calculate_length_of_diagnosis)
     # Apply 'calculate_due_status' based on 'test_info' dictionary
     for test_name, params in test_info.items():
         df = calculate_due_status(df, **params)
@@ -323,7 +323,7 @@ def load_and_preprocess_dashboard(file_path, col_list, test_info):
 
 plot_columns = [
     "age",
-    "lenght_of_diagnosis_months",
+    "lenght_of_diagnosis_years",
     "HbA1c value",
     "DBP",
     "SBP",
@@ -352,7 +352,7 @@ def plot_histograms(data, columns, color="#e3964a"):
 
         if col == 'age':
             color = "#459aca"
-        elif col == "lenght_of_diagnosis_months":
+        elif col == "lenght_of_diagnosis_years":
             color = "#1d2d3d"
         elif col == "HbA1c value":
             color = "#b92a1b"
