@@ -5,7 +5,7 @@ from datetime import datetime, date
 import seaborn as sns
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
-from streamlit_gsheets import GSheetsConnection
+
 import numpy as np
 import gspread
 
@@ -22,7 +22,7 @@ from main import (
     load_notion_df,
     load_google_sheet_df
 )
-from sheethelper import *
+# from predict import *
 from notionhelper import *
 
 
@@ -142,6 +142,8 @@ if sms_file is not None:
 
 if dashboard_file is not None:
     df = load_and_preprocess_dashboard(dashboard_file, col_list, test_info)
+    nhs_df = df[["NHS number", "HbA1c value"]]
+    prediction = predict(df, nhs_df)
 
 if st.session_state["notion_connected"] == 'connected':
     actioned_df = load_notion_df(st.session_state["notion_token"], st.session_state["notion_database"])
@@ -412,6 +414,10 @@ Use the Pre-assessment on this tool to target the appropriate cohort of patients
 
 elif tab_selector == "Predicted Hba1c - Regression":
     st.image("search.png")
+
+    st.write("**Prediction DF** here")
+    st.dataframe(prediction)
+
     st.write("This app will soon include a feature to predict patients’ next **HbA1c levels** based on their medical history. A regression model is being trained on data from the **Brompton Health PCN** to support this functionality.")
     st.markdown("""
                 Predicting HbA1c levels using machine learning has been the focus of several studies. Here are some notable papers:

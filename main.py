@@ -6,6 +6,7 @@ import seaborn as sns
 import streamlit as st
 import numpy as np
 import gspread
+from google.oauth2 import service_account
 
 from notionhelper import *
 
@@ -33,37 +34,37 @@ test_info = {
     "annual_review_due": {
         "date_col": "Annual Review Done",
         "value_col": "",
-        "threshold_value": 1,
+        "threshold_value": None,
         "due_col": "annual_review_due",
     },
     "bp_due": {
         "date_col": "BP",
         "value_col": "",
-        "threshold_value": 1,
+        "threshold_value": None,
         "due_col": "bp_due",
     },
     "dds2_due": {
         "date_col": "MH Screen - DDS or PHQ",
         "value_col": "",
-        "threshold_value": 1,
+        "threshold_value": None,
         "due_col": "dds2_due",
     },
     "goals_due": {
         "date_col": "Urine ACR",
         "value_col": "",
-        "threshold_value": 1,
+        "threshold_value": None,
         "due_col": "goals_due",
     },
     "care_plan_due": {
         "date_col": "Care plan",
         "value_col": "",
-        "threshold_value": 1,
+        "threshold_value": None,
         "due_col": "care_plan_due",
     },
     "eductation_due": {
         "date_col": "Education",
         "value_col": "",
-        "threshold_value": 1,
+        "threshold_value": None,
         "due_col": "education_due",
     },
 }
@@ -172,7 +173,7 @@ def calculate_due_status(
     date_col,
     value_col=None,
     threshold_value=None,
-    timeframe_years=1,
+    timeframe_years=1.25,
     due_col="due_status",
 ):
     """
@@ -433,7 +434,17 @@ def extract_sms_df(intervention_df, sms_df, notion_df):
     return patients_to_contact
 
 
+def update_column_names(df):
+    """
+    Updates column names in a Pandas DataFrame by converting them to lower case and replacing spaces with underscores.
 
+    Parameters:
+        df (pd.DataFrame): Input DataFrame
+    Returns:
+        pd.DataFrame: The input DataFrame with updated column names
+    """
+    df.rename(columns=lambda x: x.lower().replace(' ', '_'), inplace=True)
+    return df
 
 
 

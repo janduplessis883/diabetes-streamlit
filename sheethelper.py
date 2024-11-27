@@ -4,9 +4,6 @@ import gspread
 from google.oauth2 import service_account
 
 
-secret_path = os.getenv("SECRET_PATH")
-
-
 class SheetHelper:
     """
     A helper class to interact with Google Sheets using the gspread library.
