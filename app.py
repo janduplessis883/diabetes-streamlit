@@ -143,7 +143,7 @@ if sms_file is not None:
 if dashboard_file is not None:
     df = load_and_preprocess_dashboard(dashboard_file, col_list, test_info)
     nhs_df = df[["NHS number", "HbA1c value"]]
-    prediction = predict(df, nhs_df)
+    # prediction = predict(df, nhs_df)
 
 if st.session_state["notion_connected"] == 'connected':
     actioned_df = load_notion_df(st.session_state["notion_token"], st.session_state["notion_database"])
