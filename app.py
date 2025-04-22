@@ -65,17 +65,17 @@ def disconnect_google_sheet():
 st.set_page_config(layout="wide", page_title="A1Sense - Diabetes Dashboard")
 
 # Display images
-st.image("dashboard.png")
+st.image("images/dashboard.png")
 
 
 if st.session_state['notion_connected'] == 'connected' and st.session_state['sheet_url'] == "":
-    st.sidebar.image("notion_connected.png")
+    st.sidebar.image("images/notion_connected.png")
 elif st.session_state['notion_connected'] == 'offline' and st.session_state['sheet_url'] == "":
-    st.sidebar.image("notion_offline.png")
+    st.sidebar.image("images/notion_offline.png")
 elif st.session_state['sheet_url'] != '' and st.session_state['notion_connected'] == "offline":
-    st.sidebar.image("google_online.png")
+    st.sidebar.image("images/google_online.png")
 elif st.session_state['sheet_url'] == '' and st.session_state['notion_connected'] == "offline":
-    st.sidebar.image("google_offline.png")
+    st.sidebar.image("images/google_offline.png")
 else:
     st.sidebar.image("notion_offline.png")
 
@@ -171,8 +171,7 @@ tab_selector = ui.tabs(
 )
 
 if tab_selector == "Online Pre-assessment":
-    st.image("online.png")
-    st.image("mermaid.png")
+
     if "sms_df" not in globals() or "df" not in globals():
         st.warning("Please upload both CSV files to proceed.")
 
@@ -194,7 +193,7 @@ if tab_selector == "Online Pre-assessment":
 
     try:
         if not due_patients.empty:
-
+            ui.badges(badge_list=[("Patient Count: ", "outline"), (due_patients.shape[0], "default")], class_name="flex gap-2", key="badges1")
             plot_histograms(due_patients, plot_columns)
             import streamlit_shadcn_ui as ui
 
@@ -217,7 +216,7 @@ if tab_selector == "Online Pre-assessment":
 
 
 elif tab_selector == "HCA Self-book":
-    st.image("hca.png")
+
     if "sms_df" not in globals() or "df" not in globals():
         st.warning("Please upload both CSV files to proceed.")
 
@@ -238,10 +237,10 @@ elif tab_selector == "HCA Self-book":
 
     try:
         if not due_patients.empty:
-
+            ui.badges(badge_list=[("Patient Count: ", "outline"), (due_patients.shape[0], "default")], class_name="flex gap-2", key="badges2")
             plot_histograms(due_patients, plot_columns)
 
-            ui.badges(badge_list=[("Patient Count: ", "outline"), (due_patients.shape[0], "default")], class_name="flex gap-2", key="badges2")
+
             st.dataframe(due_patients, height=300)
             download_sms_csv(due_patients, sms_df, actioned_df, filename="hca_selfbook_sms.csv")
 
@@ -254,7 +253,7 @@ elif tab_selector == "HCA Self-book":
         st.warning(f"Upload csv data to use this tool. Error: {e}")
 
 elif tab_selector == "Filter Dataframe":
-    st.image("filter.png")
+
     if "df" not in globals():
         st.warning("Please upload the Diabetes Dashboard CSV file to proceed.")
     else:
@@ -303,10 +302,10 @@ elif tab_selector == "Filter Dataframe":
             filtered_df = filtered_df[
                 (filtered_df[key] >= min_val) & (filtered_df[key] <= max_val)
             ]
-
+        ui.badges(badge_list=[("Patient Count: ", "outline"), (filtered_df.shape[0], "default")], class_name="flex gap-2", key="badges3")
         # Display the filtered DataFram
         plot_histograms(filtered_df, plot_columns)
-        ui.badges(badge_list=[("Patient Count: ", "outline"), (filtered_df.shape[0], "default")], class_name="flex gap-2", key="badges3")
+
         st.dataframe(filtered_df, height=300)  # Only shows rows within the slider-selected range
         download_sms_csv(filtered_df, sms_df, actioned_df, filename="filtered_data_sms.csv")
 
@@ -316,7 +315,7 @@ elif tab_selector == "Filter Dataframe":
 
 
 elif tab_selector == "Rewind":
-    st.image("rewind.png")
+
     st.write("Patients eligible for referral to **Rewind**.")
     if "sms_df" not in globals() or "df" not in globals():
         st.warning("Please upload both CSV files to proceed.")
@@ -334,7 +333,7 @@ elif tab_selector == "Rewind":
 
 
 elif tab_selector == "Guidelines":
-    st.image("guidelines.png")
+
     st.write("""In the management of diabetes, the frequency of monitoring various metrics can change based on the patient’s condition and previous results. According to NICE (National Institute for Health and Care Excellence) guidelines, here are recommended timeframes for common diabetic metrics, with adjustments based on results:
 
 1. **HbA1c (Glycated Hemoglobin)**
@@ -377,11 +376,11 @@ elif tab_selector == "Guidelines":
 	- If on weight loss medications or interventions: Check every 3 months."""
     )
 
-    st.image("table.png")
+    st.image("images/table.png")
 
 
 elif tab_selector == "Quick Start":
-    st.image("start.png")
+
 
     c1, c2 = st.columns(2)
     with c1:
@@ -400,11 +399,11 @@ Use the Pre-assessment on this tool to target the appropriate cohort of patients
 5. Once you are happy with your patient cohort, download a custom CSV using the **Download Button** on each page. This will have the exact list of patient you have selected using the tool.""")
         st.write("**Tally form preview:**")
         with st.container(height=450, border=True):
-            st.image('tallyform.png')
+            st.image('images/tallyform.png')
         ui.link_button(text="Download Pre-assessment Form Template", url="https://tally.so/templates/diabetes-pre-assessment-questionnaire/mYQ4zm", key="link_btn")
     with c2:
         st.container(height=45, border=False)
-        st.image('flowchart.png')
+        st.image('images/flowchart.png')
 
     st.write("If you find this tool useful, please follow the link to GitHub and :material/star: this project.")
     st.write("For assistance with using this tool or setting up a Tally integration please contact me via a GitHub issue.")
@@ -413,7 +412,7 @@ Use the Pre-assessment on this tool to target the appropriate cohort of patients
 
 
 elif tab_selector == "Predicted Hba1c - Regression":
-    st.image("search.png")
+
 
     st.write("**Prediction DF** here")
     st.dataframe(prediction)
@@ -432,8 +431,8 @@ This paper explores machine learning techniques to predict the risks of diabetic
 5. “**Predictive Modelling of Glycated Hemoglobin Levels Using Machine Learning Regressors**”
 This study develops a methodology for predicting HbA1c levels using various machine learning regression algorithms, demonstrating the potential for improved diabetes management. (Iieta)
 """)
-    st.image('r2.png')
-    st.image('regression2.png')
+    st.image('images/r2.png')
+    st.image('images/regression2.png')
 
     st.subheader("Systematic Review: HbA1c Prediction")
     with st.container(height=650, border=True):
@@ -444,7 +443,7 @@ This study develops a methodology for predicting HbA1c levels using various mach
 
 
 elif tab_selector == "Integrations":
-    st.image("integrations.png")
+    st.image("images/integrations.png")
     st.write(st.session_state)
 
     st.subheader("Actioned DF Loaded:")

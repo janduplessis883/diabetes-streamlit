@@ -106,6 +106,7 @@ col_list = [
     "Care plan",
     "Education",
     "Care planning consultation",
+    "Review Due",
 ]
 
 
@@ -281,6 +282,37 @@ def calculate_length_of_diagnosis(diagnosis_date):
 
     return years
 
+def calculate_annual_review_due(df, review_due_col="Review Due", due_col="annual_review_due"):
+    """
+    Determine if the annual review is due based on the 'Review Due' date.
+
+    Parameters:
+    df (pd.DataFrame): DataFrame containing the 'Review Due' column.
+    review_due_col (str): Column name with the annual review due date (e.g., 'Jan-25').
+    due_col (str): New column name to store the due status.
+
+    Returns:
+    pd.DataFrame: DataFrame with an added annual review due status column.
+    """
+    now = datetime.now().date()
+
+    def is_annual_review_due(review_date_str):
+        if pd.isnull(review_date_str) or review_date_str == "":
+            return False # No review date provided
+
+        try:
+            # Parse the month-year string (e.g., 'Jan-25')
+            # Assumes the year is in the current century (20xx)
+            review_date = datetime.strptime(str(review_date_str), "%b-%y").date()
+            return review_date < now
+        except ValueError:
+            # Handle cases where the date string is not in the expected format
+            return False
+
+    df[due_col] = df[review_due_col].apply(is_annual_review_due)
+    return df
+
+
 @st.cache_data
 def load_and_preprocess_dashboard(file_path, col_list, test_info):
     """
@@ -317,8 +349,14 @@ def load_and_preprocess_dashboard(file_path, col_list, test_info):
     df['age'] = df['DOB'].apply(calculate_age)
     df['lenght_of_diagnosis_years'] = df['First DM Diagnosis'].apply(calculate_length_of_diagnosis)
     # Apply 'calculate_due_status' based on 'test_info' dictionary
+    # Apply 'calculate_due_status' based on 'test_info' dictionary
     for test_name, params in test_info.items():
-        df = calculate_due_status(df, **params)
+        # Skip 'annual_review_due' as it's handled separately
+        if test_name != "annual_review_due":
+            df = calculate_due_status(df, **params)
+
+    # Calculate annual review due status using the dedicated function
+    df = calculate_annual_review_due(df)
 
     return df
 
