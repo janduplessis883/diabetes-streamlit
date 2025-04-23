@@ -12,16 +12,12 @@ import gspread
 from main import (
     load_and_preprocess_dashboard,
     filter_due_patients,
-    test_mapping,
-    test_info,
-    col_list,
     plot_columns,
     plot_histograms,
     download_sms_csv,
     load_notion_df,
     load_google_sheet_df,
-    fiveteen_m_columns,
-    mark_due
+    date_cols,
 )
 # from predict import *
 from notionhelper import *
@@ -66,7 +62,7 @@ def disconnect_google_sheet():
 st.set_page_config(layout="wide", page_title="A1Sense - Diabetes Dashboard")
 
 # Display images
-st.image("images/dashboard.png")
+st.image("images/a1sense.png")
 
 
 if st.session_state['notion_connected'] == 'connected' and st.session_state['sheet_url'] == "":
@@ -96,7 +92,7 @@ if option == "Notion":
 
     # Notion credentials form
     with st.sidebar.form("notion_form", border=False):
-        notion_token = st.text_input("Notion Token", type="password", value=st.session_state["notion_token"])
+        notion_token = st.text_input("Notion Token", value=st.session_state["notion_token"])
         notion_database = st.text_input("Notion Database ID", value=st.session_state["notion_database"])
 
         # Form submit button
@@ -142,7 +138,7 @@ if sms_file is not None:
     sms_df = pd.read_csv(sms_file)
 
 if dashboard_file is not None:
-    df = load_and_preprocess_dashboard(dashboard_file, col_list, test_info, fiveteen_m_columns)
+    df = load_and_preprocess_dashboard(dashboard_file, date_cols)
     nhs_df = df[["nhs_number", "hba1c_value"]]
     # prediction = predict(df, nhs_df)
 
@@ -163,7 +159,7 @@ tab_selector = ui.tabs(
         "HCA Self-book",
         "Rewind",
         "Filter Dataframe",
-        "Predicted Hba1c - Regression",
+        "Predicted Hba1c",
         "Guidelines",
         "Integrations",
     ],
@@ -176,7 +172,7 @@ if tab_selector == "Online Pre-assessment":
     if "sms_df" not in globals() or "df" not in globals():
         st.warning("Please upload both CSV files to proceed.")
 
-    c1, c2 = st.columns(2)
+    c1, c2 = st.columns([2,1], gap="large")
     with c1:
         selected_tests = st.multiselect(
             "Select **Pre-assessment Criteria** to include:",
@@ -184,10 +180,15 @@ if tab_selector == "Online Pre-assessment":
             default=["annual_review_done"],
         )
     with c2:
-        st.write()
+
+        and_or_toggle = st.multiselect(
+            "**And/Or** Select **Pre-assessment Criteria** to include:",
+            options=['AND','OR',],
+            default=["AND"], max_selections=1,
+        )
     # Call the filter_due_patients function with the DataFrame and selected tests
     try:
-        due_patients = filter_due_patients(df, selected_tests, online_mapping)
+        due_patients = filter_due_patients(df, selected_tests)
 
     except NameError as e:
         st.warning(f"Upload csv data to use this tool. Error: {e}")
@@ -198,7 +199,7 @@ if tab_selector == "Online Pre-assessment":
             plot_histograms(due_patients, plot_columns)
             import streamlit_shadcn_ui as ui
 
-            ui.badges(badge_list=[("Patient Count: ", "outline"), (due_patients.shape[0], "default")], class_name="flex gap-2", key="badges1")
+            ui.badges(badge_list=[("Patient Count: ", "outline"), (due_patients.shape[0], "default")], class_name="flex gap-2", key="badges2")
 
             st.dataframe(due_patients, height=300)
             download_sms_csv(due_patients, sms_df, actioned_df, filename="online_preassessment_sms.csv")
@@ -412,7 +413,7 @@ Use the Pre-assessment on this tool to target the appropriate cohort of patients
     st.html("<a href='https://github.com/janduplessis883/diabetes-streamlit'><img alt='Static Badge' src='https://img.shields.io/badge/GitHub-jandupplessis883-%23f09235?logo=github'></a>")
 
 
-elif tab_selector == "Predicted Hba1c - Regression":
+elif tab_selector == "Predicted Hba1c":
 
 
     st.write("**Prediction DF** here")
