@@ -18,9 +18,10 @@ from main import (
     plot_columns,
     plot_histograms,
     download_sms_csv,
-    online_mapping,
     load_notion_df,
-    load_google_sheet_df
+    load_google_sheet_df,
+    fiveteen_m_columns,
+    mark_due
 )
 # from predict import *
 from notionhelper import *
@@ -141,8 +142,8 @@ if sms_file is not None:
     sms_df = pd.read_csv(sms_file)
 
 if dashboard_file is not None:
-    df = load_and_preprocess_dashboard(dashboard_file, col_list, test_info)
-    nhs_df = df[["NHS number", "HbA1c value"]]
+    df = load_and_preprocess_dashboard(dashboard_file, col_list, test_info, fiveteen_m_columns)
+    nhs_df = df[["nhs_number", "hba1c_value"]]
     # prediction = predict(df, nhs_df)
 
 if st.session_state["notion_connected"] == 'connected':
@@ -179,8 +180,8 @@ if tab_selector == "Online Pre-assessment":
     with c1:
         selected_tests = st.multiselect(
             "Select **Pre-assessment Criteria** to include:",
-            options=["Annual Review Done", "Care plan", "MH Screen - DDS or PHQ", "Patient goals", "Education", "BP"],
-            default=["Annual Review Done"],
+            options=['annual_review_done','smoking','foot_risk','retinal_screening','mh_screen_-_dds_or_phq','patient_goals','care_plan'],
+            default=["annual_review_done"],
         )
     with c2:
         st.write()
@@ -259,27 +260,27 @@ elif tab_selector == "Filter Dataframe":
     else:
         # Get the min and max values for each column to use in sliders
         metrics = {
-            "HbA1c value": (
+            "hba1c_value": (
                 "HbA1c value",
-                df["HbA1c value"].min(),
-                df["HbA1c value"].max(),
+                df["hba1c_value"].min(),
+                df["hba1c_value"].max(),
             ),
-            "SBP": ("SBP", df["SBP"].min(), df["SBP"].max()),
-            "DBP": ("DBP", df["DBP"].min(), df["DBP"].max()),
-            "Latest LDL": (
+            "sbp": ("SBP", df["sbp"].min(), df["sbp"].max()),
+            "dbp": ("DBP", df["dbp"].min(), df["dbp"].max()),
+            "latest_ldl": (
                 "Latest LDL",
-                df["Latest LDL"].min(),
-                df["Latest LDL"].max(),
+                df["latest_ldl"].min(),
+                df["latest_ldl"].max(),
             ),
-            "Latest eGFR": (
+            "latest_egfr": (
                 "Latest eGFR",
-                df["Latest eGFR"].min(),
-                df["Latest eGFR"].max(),
+                df["latest_egfr"].min(),
+                df["latest_egfr"].max(),
             ),
-            "Latest BMI": (
+            "bmi": (
                 "Latest BMI",
-                df["Latest BMI"].min(),
-                df["Latest BMI"].max(),
+                df["bmi"].min(),
+                df["bmi"].max(),
             ),
         }
 
@@ -321,7 +322,7 @@ elif tab_selector == "Rewind":
         st.warning("Please upload both CSV files to proceed.")
     else:
         rewind_df = df[
-            (df["Eligible for REWIND"] == "Yes") & (df["REWIND - Started"] == 0)
+            (df["eligible_for_rewind"] == "Yes") & (df["rewind_-_started"] == 0)
         ]
         ui.badges(badge_list=[("Patient Count: ", "outline"), (rewind_df.shape[0], "default")], class_name="flex gap-2", key="badges4")
         st.dataframe(rewind_df)
