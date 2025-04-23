@@ -6,18 +6,15 @@ and Google Sheets.
 """
 
 import pandas as pd
-import pendulum
-from datetime import datetime, date, timedelta
+from datetime import datetime
 import matplotlib.pyplot as plt
 import seaborn as sns
 import streamlit as st
 import numpy as np
 import gspread
-from google.oauth2 import service_account
-from dateutil.relativedelta import relativedelta
 
-from notionhelper import *
-from jan883_eda import *
+from notionhelper import NotionHelper
+from jan883_eda import update_column_names
 
 # Dictionary containing information about different tests and their due calculation parameters.
 # Each key represents a test (e.g., "hba1c_due"), and the value is a dictionary
@@ -256,74 +253,6 @@ def mark_due(df, date_cols):
 
 
 
-def filter_due_patients(data, selected_tests):
-    """
-    Filters the DataFrame to include only patients who are due for all of the selected tests.
-
-    Parameters:
-    data (pd.DataFrame): DataFrame containing patient data with due status columns.
-    selected_tests (list): A list of strings, where each string is the base name of a test (e.g., "smoking", "foot_risk"). The function will look for columns named like "{test}_due".
-
-    Returns:
-    pd.DataFrame: A filtered DataFrame containing only the patients who are due for all of the selected tests. Returns an empty DataFrame if no tests are selected or no patients are due.
-    """
-    filter_conditions = [
-        data[f"{test}_due"] for test in selected_tests if f"{test}_due" in data.columns
-    ]
-
-    if not filter_conditions:
-        return data.iloc[0:0]
-
-    # Combine filter conditions using AND logic
-    combined_filter = filter_conditions[0]
-    for condition in filter_conditions[1:]:
-        combined_filter &= condition
-
-    return data[combined_filter]
-
-
-def calculate_age(dob):
-    """
-    Calculates the age in years based on a given date of birth.
-
-    Parameters:
-    dob (str or datetime.date): The date of birth. Can be a string in 'YYYY-MM-DD' format or a datetime.date object.
-
-    Returns:
-    int: The calculated age in full years.
-    """
-    if isinstance(dob, str):
-        dob = datetime.strptime(dob, "%d/%m/%Y").date()
-    elif isinstance(dob, datetime):
-        dob = dob.date()
-
-    today = datetime.today().date()
-    age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
-    return age
-
-def calculate_length_of_diagnosis(diagnosis_date):
-    """
-    Calculates the length of diabetes diagnosis in years based on the first diagnosis date.
-
-    Parameters:
-    diagnosis_date (str or datetime.date): The date of the first diabetes diagnosis. Can be a string in 'YYYY-MM-DD' format or a datetime.date object.
-
-    Returns:
-    int: The calculated length of diagnosis in full years.
-    """
-    if isinstance(diagnosis_date, str):
-        diagnosis_date = datetime.strptime(diagnosis_date, "%Y-%m-%d").date()
-    elif isinstance(diagnosis_date, datetime):
-        diagnosis_date = diagnosis_date.date()
-
-    today = datetime.today().date()
-    years = (today.year - diagnosis_date.year) + today.month - diagnosis_date.month
-
-    # If the current day is earlier in the month than the diagnosis day, subtract one month
-    if today.day < diagnosis_date.day:
-        years -= 1
-
-    return years
 
 
 

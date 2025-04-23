@@ -1,4 +1,3 @@
-import os
 import pandas as pd
 import gspread
 from google.oauth2 import service_account
@@ -9,7 +8,7 @@ class SheetHelper:
     A helper class to interact with Google Sheets using the gspread library.
     """
 
-    def __init__(self, sheet_url=None, sheet_id=0, secret_file_path=secret_path):
+    def __init__(self, sheet_url=None, sheet_id=0, secret_file_path=None):
         """
         Initializes the SheetHelper instance and authenticates with the Google Sheets API.
 
@@ -122,8 +121,6 @@ class SheetHelper:
         # Determine the index of 'chroma_status' and 'Email' columns
         header = records[0].keys()
         chroma_status_col = list(header).index('chroma_status') + 1  # gspread is 1-indexed
-        email_col = list(header).index('Email') + 1  # assuming 'Email' is the column with the identifier
-
         for i, record in enumerate(records):
             if record['Email'] in email_ids:
                 # Update the 'chroma_status' column to 1 for this email

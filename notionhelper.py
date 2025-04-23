@@ -47,9 +47,6 @@ class NotionHelper:
             }
         )
 
-        page_title = my_pages["results"][0]["properties"]["Code / Notebook Description"]["title"][0]["plain_text"]
-        page_url = my_pages["results"][0]["url"]
-
         page_list = my_pages["results"]
         count = 1
         for page in page_list:

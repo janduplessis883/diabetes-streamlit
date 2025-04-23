@@ -1,13 +1,9 @@
 import pandas as pd
 import streamlit_shadcn_ui as ui
-import pendulum
-from datetime import datetime, date
-import seaborn as sns
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 
 import numpy as np
-import gspread
 
 from main import (
     load_and_preprocess_dashboard,
@@ -19,9 +15,7 @@ from main import (
     load_google_sheet_df,
     date_cols,
 )
-# from predict import *
-from notionhelper import *
-
+from predict import predict
 
 # Initialize session states if they haven't been set already
 if "notion_token" not in st.session_state:
@@ -140,7 +134,7 @@ if sms_file is not None:
 if dashboard_file is not None:
     df = load_and_preprocess_dashboard(dashboard_file, date_cols)
     nhs_df = df[["nhs_number", "hba1c_value"]]
-    # prediction = predict(df, nhs_df)
+    prediction = predict(df, nhs_df)
 
 if st.session_state["notion_connected"] == 'connected':
     actioned_df = load_notion_df(st.session_state["notion_token"], st.session_state["notion_database"])
@@ -233,7 +227,7 @@ elif tab_selector == "HCA Self-book":
         st.write()
     # Call the filter_due_patients function with the DataFrame and selected tests
     try:
-        due_patients = filter_due_patients(df, selected_tests, test_mapping)
+        due_patients = filter_due_patients(df, selected_tests)
     except NameError as e:
         st.warning(f"Upload csv data to use this tool. Error: {e}")
 

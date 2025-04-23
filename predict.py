@@ -2,9 +2,8 @@ import pickle
 from joblib import load
 import pandas as pd
 from data_preprocessing.eda import update_column_names
-from main import *
 import streamlit as st
-
+from main import add_length_columns, cols_toget_length, calculate_length_of_diagnosis, impute_values, impute_cols
 
 final = pd.DataFrame({"nhs_number": [], "latest_hba1c_value": [], "predicted_hba1c": [], "subtraction_result":[]})
 
@@ -83,8 +82,6 @@ def predict(df, nhs_df):
     data = data.fillna(0)  # STRATEGY FILL ALL NAA WITH ZERO
     data.drop(columns=["statin"], inplace=True)
 
-    nhs_number = data[["nhs_number", "hba1c_value"]]
-
     data.drop(columns=["nhs_number", "column9"], inplace=True)
 
     new_col_list = ['imd_decile', 'bame', 'diabetes_diagnosis', 'column1',
@@ -142,12 +139,12 @@ def predict(df, nhs_df):
     # Now you can use it to make predictions
     predictions = gbr_loaded.predict(scaled_new_data)
 
-    nhs_list = nhs['nhs_number'].to_list()
-    nhb_list = nhs['hba1c_value'].to_list()
+    nhs_list = nhs_df['nhs_number'].to_list()
+    hba1c_list = nhs_df['hba1c_value'].to_list()
 
     data = {
     "nhs_number": nhs_list,
-    "latest_hba1c_value": hb_list,
+    "latest_hba1c_value": hba1c_list,
     "predicted_hba1c": predictions,
     }
     final = pd.DataFrame(data)
