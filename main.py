@@ -1,118 +1,177 @@
+"""
+This module contains functions for loading, preprocessing, and analyzing diabetes patient data.
+It includes functionalities for calculating due statuses for various tests, filtering patients,
+calculating age and length of diagnosis, plotting histograms, and handling data from Notion
+and Google Sheets.
+"""
+
 import pandas as pd
-import pendulum
-from datetime import datetime, date, timedelta
+from datetime import datetime
 import matplotlib.pyplot as plt
 import seaborn as sns
 import streamlit as st
 import numpy as np
 import gspread
-from google.oauth2 import service_account
 
-from notionhelper import *
+from notionhelper import NotionHelper
+from jan883_eda import update_column_names
 
+# Dictionary containing information about different tests and their due calculation parameters.
+# Each key represents a test (e.g., "hba1c_due"), and the value is a dictionary
+# specifying the date column, optional value column, threshold value, and the
+# name of the column to store the due status.
 test_info = {
     "hba1c_due": {
-        "date_col": "HbA1c",
-        "value_col": "HbA1c value",
+        "date_col": "hba1c",
+        "value_col": "hba1c_value",
         "threshold_value": 53,
         "due_col": "hba1c_due",
     },
-    "lipids_due": {"date_col": "Cholesterol", "due_col": "lipids_due"},
+    "lipids_due": {"date_col": "cholesterol", "due_col": "lipids_due"},
     "egfr_due": {
-        "date_col": "eGFR",
-        "value_col": "Latest eGFR",
+        "date_col": "egfr",
+        "value_col": "latest_egfr",
         "threshold_value": 30,
         "due_col": "egfr_due",
     },
-    "foot_due": {"date_col": "Foot Risk", "due_col": "foot_due"},
     "urine_acr_due": {
-        "date_col": "Urine ACR",
+        "date_col": "urine_acr",
         "value_col": "",
         "threshold_value": None,
         "due_col": "urine_acr_due",
     },
-    "annual_review_due": {
-        "date_col": "Annual Review Done",
-        "value_col": "",
-        "threshold_value": None,
-        "due_col": "annual_review_due",
-    },
     "bp_due": {
-        "date_col": "BP",
+        "date_col": "bp",
         "value_col": "",
         "threshold_value": None,
         "due_col": "bp_due",
     },
-    "dds2_due": {
-        "date_col": "MH Screen - DDS or PHQ",
-        "value_col": "",
-        "threshold_value": None,
-        "due_col": "dds2_due",
-    },
-    "goals_due": {
-        "date_col": "Urine ACR",
-        "value_col": "",
-        "threshold_value": None,
-        "due_col": "goals_due",
-    },
-    "care_plan_due": {
-        "date_col": "Care plan",
-        "value_col": "",
-        "threshold_value": None,
-        "due_col": "care_plan_due",
-    },
-    "eductation_due": {
-        "date_col": "Education",
-        "value_col": "",
-        "threshold_value": None,
-        "due_col": "education_due",
-    },
 }
 
-test_mapping = {
-    "HbA1c": "hba1c_due",
-    "Lipids": "lipids_due",
-    "eGFR": "egfr_due",
-    "Urine ACR": "urine_acr_due",
-    "Foot Check": "foot_due",
-}
 
-online_mapping = {
-    "Annual Review Done": "annual_review_due",
-    "BP": "bp_due",
-    "MH Screen - DDS or PHQ": "dds2_due",
-    "Patient goals": "goals_due",
-    "Care plan": "care_plan_due",
-    "Education": "education_due",
-}
 
-col_list = [
-    "DOB",
-    "First DM Diagnosis",
-    "Annual Review Done",
-    "HbA1c",
-    "BP",
-    "Cholesterol",
-    "BMI",
-    "eGFR",
-    "Urine ACR",
-    "Smoking",
-    "Foot Risk",
-    "Retinal screening",
-    "9 KCP Complete",
-    "3 Levels to Target",
-    "MH Screen - DDS or PHQ",
-    "Patient goals",
-    "Care plan",
-    "Education",
-    "Care planning consultation",
-    "Review Due",
+# Mapping of online pre-assessment criteria names to the corresponding due status
+# column names in the DataFrame. Used for filtering patients based on selected criteria.
+
+
+# List of columns that contain date information and need to be converted to datetime objects.
+date_cols = ['dob', 'first_dm_diagnosis', 'annual_review_done',
+ 'hba1c',
+ 'bp',
+ 'cholesterol',
+ 'bmi',
+ 'egfr',
+ 'urine_acr',
+ 'smoking',
+ 'foot_risk',
+ 'mh_screen_-_dds_or_phq',
+ 'patient_goals',
+ 'care_plan',
+ 'education',
+ 'hypo_monitoring',
+ 'next_appt_date',
+ '9_kcp_complete',
+ '3_levels_to_target',
+ 'retinal_screening',
+ 'care_planning_consultation',
+ 'statin_date',
+ 'review_due'
 ]
 
+# List of columns that should be checked for being due based on a 15-month threshold.
+fiveteen_m_columns = ['annual_review_done','smoking','foot_risk','retinal_screening','mh_screen_-_dds_or_phq','patient_goals','care_plan']
+
+# List of columns to be dropped from the DataFrame during preprocessing.
+columns_to_drop=['column1',
+ 'column2',
+ 'column3',
+ 'column4',
+ 'column5',
+ 'column6',
+ 'column7',
+ 'column8',
+ 'column9',
+ 'group_consultations',
+ 'hypo_mon_denom',
+ 'month_of_birth',
+ 'efi_score',
+ 'frailty',
+ 'qof_invites_done',
+ 'qof_dm006d',
+ 'qof_dm006_achieved',
+ 'qof_dm012d',
+ 'qof_dm012_achieved',
+ 'qof_dm014d',
+ 'qof_dm014_achieved',
+ 'qof_bp_done',
+ 'qof_dm019d',
+ 'qof_dm019_achieved',
+ 'qof_hba1c_done',
+ 'qof_dm020d',
+ 'qof_dm020_achieved',
+ 'qof_dm021d',
+ 'qof_dm021_achieved',
+ 'qof_dm022d',
+ 'qof_dm022_achieved',
+ 'qof_dm023d',
+ 'qof_dm023_achieved',
+ 'hba1c_trend',
+ 'diag_l6y_hba1c_<=53',
+ 'type_1',
+ 'type_2',
+ 'both_types_recorded',
+ 'no_type_recorded',
+ 'outstanding_es_count',
+ 'outstanding_qof_count',
+ 'total_outstanding',
+ 'next_appt_date',
+ 'next_appt_with',
+ 'number_future_appts',
+ 'covid-19_high_risk',
+ 'glp-1_or_insulin',
+ 'unnamed:_110',
+ 'unnamed:_111',
+ 'unnamed:_112',
+ 'unnamed:_113',
+ 'unnamed:_114',
+ 'unnamed:_115',
+ 'unnamed:_116',
+ 'unnamed:_117']
 
 
+
+
+
+# # List of columns that contain date information and need to be converted to datetime objects.
+# col_list = [
+#     "dob",
+#     "first_dm_diagnosis",
+#     "annual_review_done",
+#     "hba1c",
+#     "bp",
+#     "cholesterol",
+#     "bmi",
+#     "egfr",
+#     "urine_acr",
+#     "smoking",
+#     "foot_risk",
+#     "retinal_screening",
+#     "9_kcp_complete",
+#     "3_levels_to_target",
+#     "mh_screen_-_dds_or_phq",
+#     "patient_goals",
+#     "care_plan",
+#     "education",
+#     "care_planning_consultation",
+#     "review_due",
+# ]
+
+# List of columns that should be checked for being due based on a 15-month threshold.
+fiveteen_m_columns = ['annual_review_done','smoking','foot_risk','retinal_screening','mh_screen_-_dds_or_phq','patient_goals','care_plan']
+
+# List of columns to be dropped from the DataFrame during preprocessing.
 columns_to_drop=[
-            "Column1",
+            "Column1", # Assuming these columns are consistently named and can be dropped before renaming
             "Column2",
             "Column3",
             "Column4",
@@ -154,7 +213,6 @@ columns_to_drop=[
             "Outstanding ES Count",
             "Outstanding QoF Count",
             "Total Outstanding",
-            "Next Appt Date",
             "Next Appt with",
             "Number Future Appts",
             "COVID-19 High Risk",
@@ -169,88 +227,75 @@ columns_to_drop=[
             "Unnamed: 117",
         ]
 
-def calculate_due_status(
-    data,
-    date_col,
-    value_col=None,
-    threshold_value=None,
-    timeframe_years=1.25,
-    due_col="due_status",
-):
+
+def convert_date_columns(df, date_columns):
     """
-    Generic function to determine if a test is due based on the last test date and an optional threshold value.
+    Converts specified columns in a DataFrame to datetime objects.
+    """
+    for col in date_columns:
+        print(f"Converting {col} to datetime - ⏳")
+        df[col] = df[col].replace('01/01/1900', '')
+        df[col] = pd.to_datetime(df[col], errors='coerce')
+    return df
+
+def mark_due(df, date_cols):
+    """
+    Adds boolean columns indicating if dates in given columns are more than 15 months old.
+    Assumes date columns are already converted to datetime objects.
+    """
+    today = pd.Timestamp.today()
+    cutoff = today - pd.DateOffset(months=15)
+
+    for col in date_cols:
+        df[f"{col}_due"] = df[col] < cutoff
+
+    return df
+
+
+
+
+
+
+
+
+def filter_due_patients(data, selected_tests):
+    """
+    Filters the DataFrame to include only patients who are due for all of the selected tests.
 
     Parameters:
-    data (pd.DataFrame): DataFrame containing the test dates and optional test values.
-    date_col (str): Column name with the date of the last test.
-    value_col (str, optional): Column name with the test values.
-    threshold_value (float, optional): Threshold value to adjust the due frequency.
-    timeframe_years (float): Default timeframe in years to consider due.
-    due_col (str): New column name to store the due status.
+    data (pd.DataFrame): DataFrame containing patient data with due status columns.
+    selected_tests (list): A list of strings, where each string is the base name of a test (e.g., "smoking", "foot_risk"). The function will look for columns named like "{test}_due".
 
     Returns:
-    pd.DataFrame: DataFrame with an added due status column.
-    """
-    now = pendulum.now()
-
-    def is_due(row):
-        last_date = row[date_col]
-        test_value = row[value_col] if value_col else None
-
-        if pd.isnull(last_date) or (value_col and pd.isnull(test_value)):
-            return False  # Insufficient data
-
-        if value_col and test_value <= threshold_value:
-            timeframe = timeframe_years / 2  # Adjust timeframe based on value threshold
-        else:
-            timeframe = timeframe_years
-
-        # Parse last_date and calculate due status
-        last_date = pendulum.parse(str(last_date))
-        return (now - last_date).in_years() >= timeframe
-
-    data[due_col] = data.apply(is_due, axis=1)
-    return data
-
-
-def filter_due_patients(data, selected_tests, test_mapping):
-    """
-    Filter patients due for specific tests.
-
-    Parameters:
-    data (pd.DataFrame): DataFrame with due status columns.
-    selected_tests (list): List of tests selected.
-    test_mapping (dict): Mapping of test names to column names.
-
-    Returns:
-    pd.DataFrame: Filtered DataFrame for patients due for the selected tests.
+    pd.DataFrame: A filtered DataFrame containing only the patients who are due for all of the selected tests. Returns an empty DataFrame if no tests are selected or no patients are due.
     """
     filter_conditions = [
-        data[test_mapping[test]] for test in selected_tests if test in test_mapping
+        data[f"{test}_due"] for test in selected_tests if f"{test}_due" in data.columns
     ]
 
     if not filter_conditions:
         return data.iloc[0:0]
 
+    # Combine filter conditions using AND logic
     combined_filter = filter_conditions[0]
     for condition in filter_conditions[1:]:
-        combined_filter |= condition
+        combined_filter &= condition
 
     return data[combined_filter]
 
 
 def calculate_age(dob):
     """
-    Calculate age in years from a given date of birth.
+    Calculates the age in years based on a given date of birth.
 
     Parameters:
-    dob (str or datetime.date): Date of birth as a 'YYYY-MM-DD' string or a datetime.date object.
+    dob (str or datetime.date): The date of birth. Can be a string in 'YYYY-MM-DD' format or a datetime.date object.
 
     Returns:
-    int: Age in years.
+    int: The calculated age in full years.
     """
     if isinstance(dob, str):
-        dob = datetime.strptime(dob, "%Y-%m-%d").date()
+        print("DOB is a string")
     elif isinstance(dob, datetime):
         dob = dob.date()
 
@@ -260,13 +305,13 @@ def calculate_age(dob):
 
 def calculate_length_of_diagnosis(diagnosis_date):
     """
-    Calculate the length of diagnosis in months.
+    Calculates the length of diabetes diagnosis in years based on the first diagnosis date.
 
     Parameters:
-    diagnosis_date (str or datetime.date): The date of first DM diagnosis.
+    diagnosis_date (str or datetime.date): The date of the first diabetes diagnosis. Can be a string in 'YYYY-MM-DD' format or a datetime.date object.
 
     Returns:
-    int: Length of diagnosis in months.
+    int: The calculated length of diagnosis in full years.
     """
     if isinstance(diagnosis_date, str):
         diagnosis_date = datetime.strptime(diagnosis_date, "%Y-%m-%d").date()
@@ -282,106 +327,80 @@ def calculate_length_of_diagnosis(diagnosis_date):
 
     return years
 
-def calculate_annual_review_due(df, review_due_col="Review Due", due_col="annual_review_due"):
-    """
-    Determine if the annual review is due based on the 'Review Due' date.
-
-    Parameters:
-    df (pd.DataFrame): DataFrame containing the 'Review Due' column.
-    review_due_col (str): Column name with the annual review due date (e.g., 'Jan-25').
-    due_col (str): New column name to store the due status.
-
-    Returns:
-    pd.DataFrame: DataFrame with an added annual review due status column.
-    """
-    now = datetime.now().date()
-
-    def is_annual_review_due(review_date_str):
-        if pd.isnull(review_date_str) or review_date_str == "":
-            return False # No review date provided
-
-        try:
-            # Parse the month-year string (e.g., 'Jan-25')
-            # Assumes the year is in the current century (20xx)
-            review_date = datetime.strptime(str(review_date_str), "%b-%y").date()
-            return review_date < now
-        except ValueError:
-            # Handle cases where the date string is not in the expected format
-            return False
-
-    df[due_col] = df[review_due_col].apply(is_annual_review_due)
-    return df
 
 
 @st.cache_data
-def load_and_preprocess_dashboard(file_path, col_list, test_info):
+def load_and_preprocess_dashboard(file_path, col_list):
     """
-    Load, preprocess, and calculate due columns for the dashboard.
+    Loads the raw diabetes dashboard data from a CSV file, preprocesses it,
+    calculates age and length of diagnosis, and determines the due status for various tests.
 
     Parameters:
-    file_path (str): Path to the CSV file.
-    col_list (list): List of columns to convert to date format.
-    test_info (dict): Contains columns and parameters for due calculations.
+    file_path (str): The path to the raw diabetes dashboard CSV file.
+    col_list (list): A list of column names that should be treated as dates.
+    test_info (dict): A dictionary containing information about different tests and their due calculation parameters.
+    fiveteen_m_columns (list): A list of column names for which to calculate due status based on a 15-month threshold.
 
     Returns:
-    pd.DataFrame: Preprocessed and enriched DataFrame with due status.
+    pd.DataFrame: A preprocessed and enriched DataFrame with calculated age, length of diagnosis, and due statuses for various tests.
     """
     # Load the CSV file
     df = pd.read_csv(file_path)
 
-# Check if columns are in DataFrame, and drop only those present
+    # Check if columns are in DataFrame, and drop only those present
     df = df.drop(columns=[col for col in columns_to_drop if col in df.columns])
-    df.rename(columns= {'NHS Number': 'NHS number'}, inplace=True)
-        # Handle NHS number - clean and convert
-    df['NHS number'] = (
-        df['NHS number']
+
+    # Update column names to lowercase with underscores
+    df = update_column_names(df)
+
+    # Handle NHS number - clean and convert
+    df['nhs_number'] = (
+        df['nhs_number']
         .astype(str)
         .str.replace(r"\.0$", "", regex=True)  # Remove trailing .0 if present
         .str.replace(" ", "")  # Remove any spaces
     )
 
     # Convert valid numbers to integers, ignoring invalid entries
-    df['NHS number'] = pd.to_numeric(df['NHS number'], errors='coerce').astype('Int64')
-    # Convert specified columns to date only (no time part)
-    for col in col_list:
-        df[col] = pd.to_datetime(df[col], errors="coerce").dt.date
+    df['nhs_number'] = pd.to_numeric(df['nhs_number'], errors='coerce').astype('Int64')
 
-    df['age'] = df['DOB'].apply(calculate_age)
-    df['lenght_of_diagnosis_years'] = df['First DM Diagnosis'].apply(calculate_length_of_diagnosis)
-    # Apply 'calculate_due_status' based on 'test_info' dictionary
-    # Apply 'calculate_due_status' based on 'test_info' dictionary
-    for test_name, params in test_info.items():
-        # Skip 'annual_review_due' as it's handled separately
-        if test_name != "annual_review_due":
-            df = calculate_due_status(df, **params)
 
-    # Calculate annual review due status using the dedicated function
-    df = calculate_annual_review_due(df)
+    # Convert date columns to datetime objects
+    df = convert_date_columns(df, col_list)
+
+    # Apply 'mark_due' for columns in fiveteen_m_columns
+    df = mark_due(df, col_list) # Note: mark_due should use fiveteen_m_columns, not col_list
+
+    # Calculate age and length of diagnosis
+    if 'dob' in df.columns:
+        df['age'] = df['dob'].apply(calculate_age)
+    if 'first_dm_diagnosis' in df.columns:
+        df['lenght_of_diagnosis_years'] = df['first_dm_diagnosis'].apply(calculate_length_of_diagnosis)
 
     return df
 
 plot_columns = [
     "age",
     "lenght_of_diagnosis_years",
-    "HbA1c value",
-    "DBP",
-    "SBP",
-    "Latest eGFR",
-    "Total Chol",
-    "Latest LDL",
-    "Latest HDL",
-    "Non-HDL Chol",
+    "hba1c_value",
+    "dbp",
+    "sbp",
+    "latest_egfr",
+    "total_chol",
+    "latest_ldl",
+    "latest_hdl",
+    "non-hdl_chol",
 ]
 
 def plot_histograms(data, columns, color="#e3964a"):
     """
-    Creates a 2x5 grid of histograms for each column specified in the `columns` list
-    from the provided `data` DataFrame, and displays the plot in Streamlit.
+    Generates and displays a grid of histograms for specified numerical columns in a DataFrame using Seaborn and Matplotlib,
+    tailored for display in a Streamlit application.
 
     Parameters:
-    - data (DataFrame): The dataset containing the columns to plot.
-    - columns (list of str): List of column names to plot.
-    - color (str): Color for the histograms. Default is '#f09235'.
+    - data (pd.DataFrame): The DataFrame containing the data to plot.
+    - columns (list of str): A list of column names from the DataFrame for which to generate histograms.
+    - color (str): The base color (hex code) to use for the histograms. Note that specific columns have overridden colors. Defaults to "#e3964a".
     """
 
     fig, axes = plt.subplots(2, 5, figsize=(22, 6), sharey=True)
@@ -393,13 +412,13 @@ def plot_histograms(data, columns, color="#e3964a"):
             color = "#459aca"
         elif col == "lenght_of_diagnosis_years":
             color = "#1d2d3d"
-        elif col == "HbA1c value":
+        elif col == "hba1c_value":
             color = "#b92a1b"
-        elif col == "DBP" or col == "SBP":
+        elif col == "dbp" or col == "sbp":
             color = "#98c25e"
-        elif col == "Latest eGFR":
+        elif col == "latest_egfr":
             color = "#971e57"
-        elif col == "Total Chol" or col =="Latest LDL" or col == "Latest HDL" or col == "Non-HDL Chol":
+        elif col == "total_chol" or col =="latest_ldl" or col == "latest_hdl" or col == "non-hdl_chol":
             color = "#e3964a"
 
         row, col_index = divmod(i, 5)  # Determine row and column index in 2x5 grid
@@ -431,13 +450,38 @@ def plot_histograms(data, columns, color="#e3964a"):
 
 @st.cache_resource
 def load_notion_df(notion_token, notion_database):
+    """
+    Loads data from a Notion database into a Pandas DataFrame.
+
+    Parameters:
+    - notion_token (str): The Notion API token.
+    - notion_database (str): The ID of the Notion database.
+
+    Returns:
+    - pd.DataFrame: DataFrame containing data from the Notion database,
+                    or an empty DataFrame if token or database ID is missing.
+    """
     if notion_token != "" and notion_database != "":
         nh = NotionHelper(notion_token, notion_database)
         notion_df = nh.get_all_pages_as_dataframe()
+        # Ensure 'NHS number' is consistent in the returned DataFrame
+        if 'NHS number' in notion_df.columns:
+             notion_df.rename(columns={'NHS number': 'nhs_number'}, inplace=True)
         return notion_df
+    return pd.DataFrame() # Return empty DataFrame if credentials are not provided
 
 @st.cache_resource
 def load_google_sheet_df(sheet_url, sheet_index):
+    """
+    Loads data from a Google Sheet into a Pandas DataFrame using service account credentials.
+
+    Parameters:
+    - sheet_url (str): The URL of the Google Sheet.
+    - sheet_index (int): The index of the worksheet to load (0-based).
+
+    Returns:
+    - pd.DataFrame: DataFrame containing data from the Google Sheet.
+    """
     credentials = {
         "type": st.secrets.google_sheets.type,
         "project_id": st.secrets.google_sheets.project_id,
@@ -457,18 +501,57 @@ def load_google_sheet_df(sheet_url, sheet_index):
     sheet = sh.get_worksheet_by_id(sheet_index)
     records = sheet.get_all_records()
     df = pd.DataFrame.from_dict(records)
-    df['NHS number'] = df['NHS number'].astype(str).replace("", np.nan)
-    df = df.dropna(subset=['NHS number'])
-    df['NHS number'] = df['NHS number'].astype(int)
+    # Attempt to find and rename the NHS number column to 'nhs_number'
+    nhs_col_candidates = ['NHS number', 'NHS Number', 'NHS_number', 'NHS_Number', 'NHSNo', 'NHS No', 'NHS_No']
+    nhs_col_found = None
+    for col in nhs_col_candidates:
+        if col in df.columns:
+            nhs_col_found = col
+            break
+
+    if nhs_col_found:
+        df.rename(columns={nhs_col_found: 'nhs_number'}, inplace=True)
+        df['nhs_number'] = df['nhs_number'].astype(str).replace("", np.nan)
+        df = df.dropna(subset=['nhs_number'])
+        df['nhs_number'] = pd.to_numeric(df['nhs_number'], errors='coerce').astype('Int64') # Use Int64 for nullable integer
+    else:
+        st.warning("NHS number column not found in Google Sheet with common names. Returning empty DataFrame.")
+        return pd.DataFrame() # Return empty DataFrame if NHS number column is not found
+
     return df
 
 
 def extract_sms_df(intervention_df, sms_df, notion_df):
-    intervention_df['NHS number'] = intervention_df['NHS number'].astype(int)
-    sms_df["NHS number"] = sms_df["NHS number"].astype(int)
-    output_sms_df = sms_df.merge(intervention_df[["NHS number"]], on="NHS number", how="inner")
+    """
+    Extracts a subset of the SMS DataFrame based on patients present in the intervention DataFrame
+    and not present in the Notion DataFrame.
 
-    patients_to_contact = output_sms_df[~output_sms_df['NHS number'].isin(notion_df['NHS number'])]
+    Parameters:
+    - intervention_df (DataFrame): DataFrame containing patients for intervention.
+    - sms_df (DataFrame): The original SMS DataFrame.
+    - notion_df (DataFrame): DataFrame containing patients already actioned in Notion.
+
+    Returns:
+    - pd.DataFrame: DataFrame of patients to contact via SMS.
+    """
+    # Ensure 'nhs_number' is consistent across dataframes and handle missing columns
+    if 'nhs_number' not in intervention_df.columns:
+        st.error("Intervention DataFrame is missing 'nhs_number' column.")
+        return pd.DataFrame()
+    if 'nhs_number' not in sms_df.columns:
+        st.error("SMS DataFrame is missing 'nhs_number' column.")
+        return pd.DataFrame()
+    if 'nhs_number' not in notion_df.columns:
+        st.error("Notion DataFrame is missing 'nhs_number' column.")
+        return pd.DataFrame()
+
+    intervention_df['nhs_number'] = pd.to_numeric(intervention_df['nhs_number'], errors='coerce').astype('Int64')
+    sms_df["nhs_number"] = pd.to_numeric(sms_df["nhs_number"], errors='coerce').astype('Int64')
+    notion_df["nhs_number"] = pd.to_numeric(notion_df["nhs_number"], errors='coerce').astype('Int64')
+
+    output_sms_df = sms_df.merge(intervention_df[["nhs_number"]], on="nhs_number", how="inner")
+
+    patients_to_contact = output_sms_df[~output_sms_df['nhs_number'].isin(notion_df['nhs_number'])]
     return patients_to_contact
 
 
@@ -481,7 +564,7 @@ def update_column_names(df):
     Returns:
         pd.DataFrame: The input DataFrame with updated column names
     """
-    df.rename(columns=lambda x: x.lower().replace(' ', '_'), inplace=True)
+    df.columns = df.columns.str.lower().str.replace(' ', '_')
     return df
 
 
@@ -494,6 +577,7 @@ def download_sms_csv(rewind_df, sms_df, notion_df, filename="dm_rewind_sms.csv")
     Parameters:
     - rewind_df (DataFrame): The DataFrame used as input for the SMS extraction.
     - sms_df (DataFrame): The SMS DataFrame to be extracted.
+    - notion_df (DataFrame): DataFrame containing patients already actioned in Notion.
     - filename (str): The name of the CSV file to be downloaded. Default is 'dm_rewind_sms.csv'.
     """
 
