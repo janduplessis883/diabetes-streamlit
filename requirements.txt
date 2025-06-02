@@ -10,3 +10,4 @@ google-auth
 notion-client
 st-gsheets-connection
 numpy
+jan883-eda

@@ -1,0 +1,18 @@
+Explanation of changes made to `main.py`:
+
+1.  **Created a new function `convert_date_columns(df, date_columns)`:**
+    *   This function is responsible for iterating through a list of specified date column names in a DataFrame.
+    *   For each column, it replaces the placeholder date '01/01/1900' with an empty string and then converts the column to datetime objects using `pd.to_datetime` with `errors='coerce'` to handle any parsing issues gracefully.
+    *   This separates the date conversion logic into its own dedicated function.
+
+2.  **Modified the `mark_due(df, date_cols)` function:**
+    *   The date conversion logic (replacing '01/01/1900' and calling `pd.to_datetime`) was removed from this function.
+    *   The `mark_due` function now assumes that the input `date_cols` are already in datetime format.
+    *   It continues to calculate and add boolean columns indicating if the dates in the specified columns are more than 15 months old.
+
+3.  **Updated the `load_and_preprocess_dashboard(file_path, col_list)` function:**
+    *   A call to the new `convert_date_columns(df, col_list)` function was added before the calls to `calculate_age`, `calculate_length_of_diagnosis`, and `mark_due`.
+    *   This ensures that all relevant date columns are converted to datetime objects at the beginning of the preprocessing pipeline, making them ready for subsequent calculations and checks.
+    *   The call to `mark_due` was also corrected to use `fiveteen_m_columns` instead of `col_list`, as `mark_due` is intended for the columns that need the 15-month check.
+
+These changes improve the code structure by separating concerns (date conversion vs. due status calculation) and ensure that date columns are properly formatted before being used in calculations, which should resolve the `ValueError` related to date parsing.
